@@ -1,0 +1,74 @@
+{
+  "name": "antigravity-cockpit",
+  "displayName": "Antigravity Cockpit",
+  "icon": "assets/icon.png",
+  "description": "A premium, dashboard-style quota monitor for Antigravity AI.",
+  "version": "1.0.2",
+  "publisher": "jlcodes",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jlcodes99/vscode-antigravity-cockpit.git"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:agCockpit.open"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agCockpit.open",
+        "title": "Open Antigravity Cockpit"
+      }
+    ],
+    "configuration": {
+      "title": "Antigravity Cockpit",
+      "properties": {
+        "agCockpit.refreshInterval": {
+          "type": "number",
+          "default": 60,
+          "description": "Interval in seconds to refresh quota data."
+        },
+        "agCockpit.showPromptCredits": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show prompt credits in the dashboard and include them in status bar status."
+        },
+        "agCockpit.pinnedModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Specific models to monitor in the status bar (e.g. 'gpt-4', 'gemini-1.5-pro'). If empty, monitors all models."
+        },
+        "agCockpit.modelOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "User-defined order of models in the dashboard."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
