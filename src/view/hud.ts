@@ -135,6 +135,44 @@ export class CockpitHUD {
                 remainingPercentage: snapshot.promptCredits.remainingPercentage,
                 usedPercentage: snapshot.promptCredits.usedPercentage,
             } : undefined,
+            userInfo: snapshot.userInfo ? {
+                name: snapshot.userInfo.name,
+                email: snapshot.userInfo.email,
+                planName: snapshot.userInfo.planName,
+                tier: snapshot.userInfo.tier,
+                browserEnabled: snapshot.userInfo.browserEnabled,
+                knowledgeBaseEnabled: snapshot.userInfo.knowledgeBaseEnabled,
+                canBuyMoreCredits: snapshot.userInfo.canBuyMoreCredits,
+                hasAutocompleteFastMode: snapshot.userInfo.hasAutocompleteFastMode,
+                monthlyPromptCredits: snapshot.userInfo.monthlyPromptCredits,
+                monthlyFlowCredits: snapshot.userInfo.monthlyFlowCredits,
+                availablePromptCredits: snapshot.userInfo.availablePromptCredits,
+                availableFlowCredits: snapshot.userInfo.availableFlowCredits,
+                cascadeWebSearchEnabled: snapshot.userInfo.cascadeWebSearchEnabled,
+                canGenerateCommitMessages: snapshot.userInfo.canGenerateCommitMessages,
+                allowMcpServers: snapshot.userInfo.allowMcpServers,
+                maxNumChatInputTokens: snapshot.userInfo.maxNumChatInputTokens,
+                tierDescription: snapshot.userInfo.tierDescription,
+                upgradeUri: snapshot.userInfo.upgradeUri,
+                upgradeText: snapshot.userInfo.upgradeText,
+                // New fields
+                teamsTier: snapshot.userInfo.teamsTier,
+                hasTabToJump: snapshot.userInfo.hasTabToJump,
+                allowStickyPremiumModels: snapshot.userInfo.allowStickyPremiumModels,
+                allowPremiumCommandModels: snapshot.userInfo.allowPremiumCommandModels,
+                maxNumPremiumChatMessages: snapshot.userInfo.maxNumPremiumChatMessages,
+                maxCustomChatInstructionCharacters: snapshot.userInfo.maxCustomChatInstructionCharacters,
+                maxNumPinnedContextItems: snapshot.userInfo.maxNumPinnedContextItems,
+                maxLocalIndexSize: snapshot.userInfo.maxLocalIndexSize,
+                monthlyFlexCreditPurchaseAmount: snapshot.userInfo.monthlyFlexCreditPurchaseAmount,
+                canCustomizeAppIcon: snapshot.userInfo.canCustomizeAppIcon,
+                cascadeCanAutoRunCommands: snapshot.userInfo.cascadeCanAutoRunCommands,
+                canAllowCascadeInBackground: snapshot.userInfo.canAllowCascadeInBackground,
+                allowAutoRunCommands: snapshot.userInfo.allowAutoRunCommands,
+                allowBrowserExperimentalFeatures: snapshot.userInfo.allowBrowserExperimentalFeatures,
+                acceptedLatestTermsOfService: snapshot.userInfo.acceptedLatestTermsOfService,
+                userTierId: snapshot.userInfo.userTierId,
+            } : undefined,
             models: snapshot.models.map(m => ({
                 label: m.label,
                 modelId: m.modelId,
@@ -213,13 +251,6 @@ export class CockpitHUD {
             <button id="reset-order-btn" class="refresh-btn" title="Reset to default order">
                 ${t('dashboard.resetOrder')}
             </button>
-            <label class="switch-label">
-                ${t('dashboard.showCredits')}
-                <label class="switch">
-                    <input type="checkbox" id="credits-toggle">
-                    <span class="slider"></span>
-                </label>
-            </label>
         </div>
     </header>
 

@@ -12,7 +12,6 @@
     // DOM 元素
     const dashboard = document.getElementById('dashboard');
     const statusDiv = document.getElementById('status');
-    const creditsToggle = document.getElementById('credits-toggle');
     const refreshBtn = document.getElementById('refresh-btn');
     const resetOrderBtn = document.getElementById('reset-order-btn');
     const toast = document.getElementById('toast');
@@ -38,8 +37,8 @@
         }
 
         // 绑定事件
+        // 绑定事件
         refreshBtn.addEventListener('click', handleRefresh);
-        creditsToggle.addEventListener('change', handleToggleCredits);
         if (resetOrderBtn) {
             resetOrderBtn.addEventListener('click', handleResetOrder);
         }
@@ -77,9 +76,7 @@
         startCooldown(60);
     }
 
-    function handleToggleCredits() {
-        vscode.postMessage({ command: 'toggleCredits' });
-    }
+
 
     function handleResetOrder() {
         vscode.postMessage({ command: 'resetOrder' });
@@ -226,18 +223,15 @@
         statusDiv.style.display = 'none';
         dashboard.innerHTML = '';
 
-        // 更新 UI 状态
-        creditsToggle.checked = config?.showPromptCredits || false;
-
         // 检查离线状态
         if (!snapshot.isConnected) {
             renderOfflineCard(snapshot.errorMessage);
             return;
         }
 
-        // Prompt Credits 卡片
-        if (snapshot.prompt_credits && config?.showPromptCredits) {
-            renderCreditsCard(snapshot.prompt_credits);
+        // Render User Profile (if available) - New Section
+        if (snapshot.userInfo) {
+            renderUserProfile(snapshot.userInfo);
         }
 
         // 模型排序
@@ -252,6 +246,8 @@
                 return idxA - idxB;
             });
         }
+
+
 
         // 渲染模型卡片
         models.forEach(model => {
@@ -278,29 +274,118 @@
         dashboard.appendChild(card);
     }
 
-    function renderCreditsCard(credits) {
-        const color = getHealthColor(credits.remainingPercentage);
+    // State for profile toggle
+    let isProfileExpanded = false;
+
+    function renderUserProfile(userInfo) {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'card full-width profile-card';
+
+        // Helper for features
+        const getFeatureStatus = (enabled) => enabled 
+            ? `<span class="tag success">${i18n['feature.enabled'] || 'Enabled'}</span>`
+            : `<span class="tag disabled">${i18n['feature.disabled'] || 'Disabled'}</span>`;
+
+        // Build Upgrade Info HTML if available
+        let upgradeHtml = '';
+        if (userInfo.upgradeText && userInfo.upgradeUri) {
+            upgradeHtml = `
+            <div class="upgrade-info">
+                <div class="upgrade-text">${userInfo.upgradeText}</div>
+                <a href="${userInfo.upgradeUri}" class="upgrade-link" target="_blank">Upgrade Now</a>
+            </div>`;
+        }
+
+        // Toggle visibility style based on state
+        const detailsClass = isProfileExpanded ? 'profile-details' : 'profile-details hidden';
+        const toggleText = isProfileExpanded ? (i18n['profile.less'] || 'Show Less') : (i18n['profile.more'] || 'Show More Details');
+        const iconTransform = isProfileExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+
 
         card.innerHTML = `
             <div class="card-title">
-                <span class="label">${i18n['dashboard.promptCredits'] || 'Prompt Credits'}</span>
-                <span class="status-dot" style="background-color: ${color}"></span>
+                <span class="label">${i18n['profile.details'] || 'User Profile'}</span>
+                <div class="tier-badge">${userInfo.tier}</div>
             </div>
-            <div class="progress-circle" style="background: conic-gradient(${color} ${credits.remainingPercentage}%, var(--border-color) ${credits.remainingPercentage}%);">
-                <div class="percentage">${credits.remainingPercentage.toFixed(2)}%</div>
+            
+            <div class="profile-grid">
+                ${createDetailItem(i18n['profile.email'] || 'Email', userInfo.email)}
+                ${createDetailItem(i18n['profile.plan'] || 'Plan', userInfo.planName)}
+                ${createDetailItem(i18n['profile.description'] || 'Description', userInfo.tierDescription)}
+                ${createDetailItem(i18n['feature.webSearch'] || 'Web Search', getFeatureStatus(userInfo.cascadeWebSearchEnabled))}
+                ${createDetailItem(i18n['feature.browser'] || 'Browser Access', getFeatureStatus(userInfo.browserEnabled))}
+                ${createDetailItem(i18n['feature.knowledgeBase'] || 'Knowledge Base', getFeatureStatus(userInfo.knowledgeBaseEnabled))}
+                ${createDetailItem(i18n['feature.mcp'] || 'MCP Servers', getFeatureStatus(userInfo.allowMcpServers))}
+                ${createDetailItem(i18n['feature.gitCommit'] || 'Git Commit', getFeatureStatus(userInfo.canGenerateCommitMessages))}
             </div>
-            <div class="info-row">
-                <span>${i18n['dashboard.available'] || 'Available'}</span>
-                <span class="info-value">${credits.available}</span>
+
+            <div class="${detailsClass}" id="profile-more">
+                <div class="profile-grid">
+                    ${createDetailItem(i18n['feature.fastMode'] || 'Fast Mode', getFeatureStatus(userInfo.hasAutocompleteFastMode))}
+                    ${createDetailItem(i18n['feature.moreCredits'] || 'Can Buy Credits', getFeatureStatus(userInfo.canBuyMoreCredits))}
+                    ${createDetailItem(i18n['feature.context'] || 'Context Window', userInfo.maxNumChatInputTokens)}
+                    
+                    ${createDetailItem('Teams Tier', userInfo.teamsTier)}
+                    ${createDetailItem('User ID', userInfo.userTierId || 'N/A')}
+                    ${createDetailItem('Tab To Jump', getFeatureStatus(userInfo.hasTabToJump))}
+                    ${createDetailItem('Sticky Models', getFeatureStatus(userInfo.allowStickyPremiumModels))}
+                    ${createDetailItem('Command Models', getFeatureStatus(userInfo.allowPremiumCommandModels))}
+                    ${createDetailItem('Max Premium msgs', userInfo.maxNumPremiumChatMessages)}
+                    ${createDetailItem('Chat Instructions Char Limit', userInfo.maxCustomChatInstructionCharacters)}
+                    ${createDetailItem('Pinned Context Items', userInfo.maxNumPinnedContextItems)}
+                    ${createDetailItem('Local Index Size', userInfo.maxLocalIndexSize)}
+                    ${createDetailItem('Accepted TOS', getFeatureStatus(userInfo.acceptedLatestTermsOfService))}
+                    ${createDetailItem('Customize Icon', getFeatureStatus(userInfo.canCustomizeAppIcon))}
+                    ${createDetailItem('Cascade Auto Run', getFeatureStatus(userInfo.cascadeCanAutoRunCommands))}
+                    ${createDetailItem('Cascade Background', getFeatureStatus(userInfo.canAllowCascadeInBackground))}
+                    ${createDetailItem('Auto Run Commands', getFeatureStatus(userInfo.allowAutoRunCommands))}
+                    ${createDetailItem('Exp. Browser Features', getFeatureStatus(userInfo.allowBrowserExperimentalFeatures))}
+                </div>
+                ${upgradeHtml}
             </div>
-            <div class="info-row">
-                <span>${i18n['dashboard.monthly'] || 'Monthly'}</span>
-                <span class="info-value">${credits.monthly}</span>
+
+            <div class="profile-toggle">
+                <button class="btn-text" id="profile-toggle-btn">
+                    <span id="profile-toggle-text">${toggleText}</span> 
+                    <span id="profile-toggle-icon" style="transform: ${iconTransform}">▼</span>
+                </button>
             </div>
         `;
         dashboard.appendChild(card);
+        
+        // Bind event listener after element creation
+        const toggleBtn = card.querySelector('#profile-toggle-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', toggleProfileDetails);
+        }
+    }
+
+    // Toggle detailed profile info
+    function toggleProfileDetails() {
+        const details = document.getElementById('profile-more');
+        const text = document.getElementById('profile-toggle-text');
+        const icon = document.getElementById('profile-toggle-icon');
+        
+        if (details.classList.contains('hidden')) {
+            details.classList.remove('hidden');
+            text.textContent = i18n['profile.less'] || 'Show Less';
+            icon.style.transform = 'rotate(180deg)';
+            isProfileExpanded = true;
+        } else {
+            details.classList.add('hidden');
+            text.textContent = i18n['profile.more'] || 'Show More Details';
+            icon.style.transform = 'rotate(0deg)';
+            isProfileExpanded = false;
+        }
+    };
+
+    function createDetailItem(label, value) {
+        return `
+            <div class="detail-item">
+                <span class="detail-label">${label}</span>
+                <span class="detail-value">${value}</span>
+            </div>
+        `;
     }
 
     function renderModelCard(model, pinnedModels) {

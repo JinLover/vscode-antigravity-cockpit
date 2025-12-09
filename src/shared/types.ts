@@ -45,6 +45,8 @@ export interface QuotaSnapshot {
     timestamp: Date;
     /** Prompt Credits */
     promptCredits?: PromptCreditsInfo;
+    /** 用户信息 */
+    userInfo?: UserInfo;
     /** 模型列表 */
     models: ModelQuotaInfo[];
     /** 连接状态 */
@@ -94,6 +96,7 @@ export interface PlanInfo {
     planName: string;
     monthlyPromptCredits: number;
     monthlyFlowCredits: number;
+    [key: string]: any;
 }
 
 /** 计划状态 */
@@ -126,6 +129,14 @@ export interface UserStatus {
     email: string;
     planStatus?: PlanStatus;
     cascadeModelConfigData?: CascadeModelConfigData;
+    acceptedLatestTermsOfService?: boolean;
+    userTier?: {
+        name: string;
+        id: string;
+        description: string;
+        upgradeSubscriptionUri?: string;
+        upgradeSubscriptionText?: string;
+    };
 }
 
 /** 服务端用户状态响应 */
@@ -153,6 +164,46 @@ export interface ProcessInfo {
     extensionPort: number;
     /** CSRF Token */
     csrfToken: string;
+}
+
+/** 用户详细信息 */
+export interface UserInfo {
+    name: string;
+    email: string;
+    planName: string;
+    tier: string;
+    browserEnabled: boolean;
+    knowledgeBaseEnabled: boolean;
+    canBuyMoreCredits: boolean;
+    hasAutocompleteFastMode: boolean;
+    monthlyPromptCredits: number;
+    monthlyFlowCredits: number;
+    availablePromptCredits: number;
+    availableFlowCredits: number;
+    cascadeWebSearchEnabled: boolean;
+    canGenerateCommitMessages: boolean;
+    allowMcpServers: boolean;
+    maxNumChatInputTokens: string;
+    tierDescription: string;
+    upgradeUri: string;
+    upgradeText: string;
+    // New fields
+    teamsTier: string;
+    hasTabToJump: boolean;
+    allowStickyPremiumModels: boolean;
+    allowPremiumCommandModels: boolean;
+    maxNumPremiumChatMessages: string;
+    maxCustomChatInstructionCharacters: string;
+    maxNumPinnedContextItems: string;
+    maxLocalIndexSize: string;
+    monthlyFlexCreditPurchaseAmount: number;
+    canCustomizeAppIcon: boolean;
+    cascadeCanAutoRunCommands: boolean;
+    canAllowCascadeInBackground: boolean;
+    allowAutoRunCommands: boolean;
+    allowBrowserExperimentalFeatures: boolean;
+    acceptedLatestTermsOfService: boolean;
+    userTierId: string;
 }
 
 // ============ UI 相关类型 ============

@@ -272,6 +272,46 @@ export class ReactorCore {
             }
         }
 
+        const userInfo: import('../shared/types').UserInfo = {
+            name: status.name || 'Unknown User',
+            email: status.email || 'N/A',
+            planName: plan?.planName || 'N/A',
+            tier: status.userTier?.name || plan?.teamsTier || 'N/A',
+            browserEnabled: plan?.browserEnabled === true,
+            knowledgeBaseEnabled: plan?.knowledgeBaseEnabled === true,
+            canBuyMoreCredits: plan?.canBuyMoreCredits === true,
+            hasAutocompleteFastMode: plan?.hasAutocompleteFastMode === true,
+            monthlyPromptCredits: plan?.monthlyPromptCredits || 0,
+            monthlyFlowCredits: plan?.monthlyFlowCredits || 0,
+            availablePromptCredits: status.planStatus?.availablePromptCredits || 0,
+            availableFlowCredits: status.planStatus?.availableFlowCredits || 0,
+            cascadeWebSearchEnabled: plan?.cascadeWebSearchEnabled === true,
+            canGenerateCommitMessages: plan?.canGenerateCommitMessages === true,
+            allowMcpServers: plan?.defaultTeamConfig?.allowMcpServers === true,
+            maxNumChatInputTokens: plan?.maxNumChatInputTokens || 'N/A',
+            tierDescription: status.userTier?.description || 'N/A',
+            upgradeUri: status.userTier?.upgradeSubscriptionUri || '',
+            upgradeText: status.userTier?.upgradeSubscriptionText || '',
+            
+            // New fields population
+            teamsTier: plan?.teamsTier || 'N/A',
+            hasTabToJump: plan?.hasTabToJump === true,
+            allowStickyPremiumModels: plan?.allowStickyPremiumModels === true,
+            allowPremiumCommandModels: plan?.allowPremiumCommandModels === true,
+            maxNumPremiumChatMessages: plan?.maxNumPremiumChatMessages || 'N/A',
+            maxCustomChatInstructionCharacters: plan?.maxCustomChatInstructionCharacters || 'N/A',
+            maxNumPinnedContextItems: plan?.maxNumPinnedContextItems || 'N/A',
+            maxLocalIndexSize: plan?.maxLocalIndexSize || 'N/A',
+            monthlyFlexCreditPurchaseAmount: plan?.monthlyFlexCreditPurchaseAmount || 0,
+            canCustomizeAppIcon: plan?.canCustomizeAppIcon === true,
+            cascadeCanAutoRunCommands: plan?.cascadeCanAutoRunCommands === true,
+            canAllowCascadeInBackground: plan?.canAllowCascadeInBackground === true,
+            allowAutoRunCommands: plan?.defaultTeamConfig?.allowAutoRunCommands === true,
+            allowBrowserExperimentalFeatures: plan?.defaultTeamConfig?.allowBrowserExperimentalFeatures === true,
+            acceptedLatestTermsOfService: status.acceptedLatestTermsOfService === true,
+            userTierId: status.userTier?.id || 'N/A',
+        };
+
         const configs: ClientModelConfig[] = status.cascadeModelConfigData?.clientModelConfigs || [];
         const modelSorts = status.cascadeModelConfigData?.clientModelSorts || [];
 
@@ -336,6 +376,7 @@ export class ReactorCore {
         return {
             timestamp: new Date(),
             promptCredits,
+            userInfo,
             models,
             isConnected: true,
         };
