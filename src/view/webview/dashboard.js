@@ -32,8 +32,8 @@
         if (state.lastRefresh) {
             const now = Date.now();
             const diff = Math.floor((now - state.lastRefresh) / 1000);
-            if (diff < 60) {
-                startCooldown(60 - diff);
+            if (diff < 20) {
+                startCooldown(20 - diff);
             }
         }
 
@@ -64,7 +64,7 @@
 
         const now = Date.now();
         vscode.setState({ ...vscode.getState(), lastRefresh: now });
-        startCooldown(60);
+        startCooldown(20);
     }
 
     function handleToggleCredits() {

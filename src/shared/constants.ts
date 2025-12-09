@@ -16,7 +16,7 @@ export const QUOTA_THRESHOLDS = {
 /** 时间相关常量 (毫秒) */
 export const TIMING = {
     /** 默认刷新间隔 */
-    DEFAULT_REFRESH_INTERVAL_MS: 60000,
+    DEFAULT_REFRESH_INTERVAL_MS: 120000,
     /** 进程扫描重试间隔 */
     PROCESS_SCAN_RETRY_MS: 100,
     /** HTTP 请求超时 */
@@ -24,7 +24,7 @@ export const TIMING = {
     /** 进程命令执行超时 */
     PROCESS_CMD_TIMEOUT_MS: 2000,
     /** 刷新冷却时间 (秒) */
-    REFRESH_COOLDOWN_SECONDS: 60,
+    REFRESH_COOLDOWN_SECONDS: 20,
 } as const;
 
 /** UI 相关常量 */

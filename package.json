@@ -56,7 +56,7 @@
       "properties": {
         "agCockpit.refreshInterval": {
           "type": "number",
-          "default": 60,
+          "default": 120,
           "minimum": 10,
           "maximum": 3600,
           "description": "Interval in seconds to refresh quota data (10-3600)."
