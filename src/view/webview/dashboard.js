@@ -44,6 +44,16 @@
             resetOrderBtn.addEventListener('click', handleResetOrder);
         }
 
+        // 事件委托：处理置顶开关
+        dashboard.addEventListener('change', (e) => {
+            if (e.target.classList.contains('pin-toggle')) {
+                const modelId = e.target.getAttribute('data-model-id');
+                if (modelId) {
+                    togglePin(modelId);
+                }
+            }
+        });
+
         // 监听消息
         window.addEventListener('message', handleMessage);
 
@@ -146,7 +156,7 @@
     }
 
     // 暴露给全局
-    window.togglePin = togglePin;
+
     window.retryConnection = retryConnection;
     window.openLogs = openLogs;
 
@@ -297,7 +307,7 @@
         const pct = model.remainingPercentage || 0;
         const color = getHealthColor(pct);
         const isPinned = pinnedModels.includes(model.modelId);
-        const safeId = model.modelId.replace(/'/g, "\\'");
+
 
         const card = document.createElement('div');
         card.className = 'card draggable';
@@ -318,7 +328,7 @@
                 <span class="label" title="${model.modelId}">${model.label}</span>
                 <div class="actions">
                     <label class="switch" data-tooltip="${i18n['dashboard.pinHint'] || 'Pin to Status Bar'}">
-                        <input type="checkbox" ${isPinned ? 'checked' : ''} onchange="togglePin('${safeId}')">
+                        <input type="checkbox" class="pin-toggle" data-model-id="${model.modelId}" ${isPinned ? 'checked' : ''}>
                         <span class="slider"></span>
                     </label>
                     <span class="status-dot" style="background-color: ${color}"></span>

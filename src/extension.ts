@@ -116,43 +116,60 @@ function setupMessageHandling(): void {
     hud.onSignal(async (message: WebviewMessage) => {
         switch (message.command) {
             case 'togglePin':
+                logger.info(`Received togglePin signal: ${JSON.stringify(message)}`);
                 if (message.modelId) {
                     await configService.togglePinnedModel(message.modelId);
-                    reactor.syncTelemetry();
+                    reactor.reprocess();
+                } else {
+                    logger.warn('togglePin signal missing modelId');
                 }
                 break;
 
             case 'toggleCredits':
+                logger.info('User toggled Prompt Credits display');
                 await configService.toggleShowPromptCredits();
-                reactor.syncTelemetry();
+                reactor.reprocess();
                 break;
 
             case 'updateOrder':
                 if (message.order) {
+                    logger.info(`User updated model order. Count: ${message.order.length}`);
                     await configService.updateModelOrder(message.order);
-                    reactor.syncTelemetry();
+                    reactor.reprocess();
+                } else {
+                    logger.warn('updateOrder signal missing order data');
                 }
                 break;
 
             case 'resetOrder':
+                logger.info('User reset model order to default');
                 await configService.resetModelOrder();
-                reactor.syncTelemetry();
+                reactor.reprocess();
                 break;
 
             case 'refresh':
+                logger.info('User triggered manual refresh');
                 reactor.syncTelemetry();
                 break;
 
             case 'init':
-                hud.rehydrate();
+                if (reactor.hasCache) {
+                    logger.info('Dashboard initialized (reprocessing cached data)');
+                    reactor.reprocess();
+                } else {
+                    logger.info('Dashboard initialized (no cache, performing full sync)');
+                    reactor.syncTelemetry();
+                }
                 break;
 
             case 'retry':
+                logger.info('User triggered connection retry');
                 systemOnline = false;
                 await bootSystems();
                 break;
 
             case 'openLogs':
+                logger.info('User opened logs');
                 logger.show();
                 break;
         }
@@ -273,9 +290,13 @@ function formatStatusBarText(label: string, percentage: number, format: string):
 function handleConfigChange(config: CockpitConfig): void {
     logger.debug('Configuration changed', config);
     
-    // 更新刷新间隔
-    if (systemOnline) {
-        reactor.startReactor(configService.getRefreshIntervalMs());
+    // 仅当刷新间隔变化时重启 Reactor
+    const newInterval = configService.getRefreshIntervalMs();
+    
+    // 如果 Reactor 已经在运行且间隔没有变化，则忽略
+    if (systemOnline && reactor.currentInterval !== newInterval) {
+        logger.info(`Refresh interval changed from ${reactor.currentInterval}ms to ${newInterval}ms. Restarting Reactor.`);
+        reactor.startReactor(newInterval);
     }
 }
 

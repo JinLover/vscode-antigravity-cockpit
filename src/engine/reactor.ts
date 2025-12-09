@@ -28,11 +28,14 @@ export class ReactorCore {
     private updateHandler?: (data: QuotaSnapshot) => void;
     private errorHandler?: (error: Error) => void;
     private pulseTimer?: ReturnType<typeof setInterval>;
+    public currentInterval: number = 0;
     
     /** 已通知过配额耗尽的模型 */
     private exhaustedNotifiedModels: Set<string> = new Set();
     /** 已通知过低配额警告的模型 */
     private warningNotifiedModels: Set<string> = new Set();
+    /** 上一次的配额快照缓存 */
+    private lastSnapshot?: QuotaSnapshot;
 
     constructor() {
         logger.debug('ReactorCore Online');
@@ -119,6 +122,7 @@ export class ReactorCore {
      */
     startReactor(interval: number): void {
         this.shutdown();
+        this.currentInterval = interval;
         logger.info(`Reactor Pulse: ${interval}ms`);
 
         this.syncTelemetry();
@@ -155,8 +159,8 @@ export class ReactorCore {
             );
 
             const telemetry = this.decodeSignal(raw);
+            this.lastSnapshot = telemetry; // Cache the latest snapshot
 
-            // 打印关键配额信息
             // 打印关键配额信息
             const maxLabelLen = Math.max(...telemetry.models.map(m => m.label.length));
             const quotaSummary = telemetry.models.map(m => {
@@ -179,6 +183,26 @@ export class ReactorCore {
                 this.errorHandler(err);
             }
         }
+    }
+
+    /**
+     * 重新发布最近一次的遥测数据
+     * 用于在配置变更等不需要重新请求 API 的场景下更新 UI
+     */
+    reprocess(): void {
+        if (this.lastSnapshot && this.updateHandler) {
+            logger.info('Reprocessing cached telemetry data');
+            this.updateHandler(this.lastSnapshot);
+        } else {
+            logger.warn('Cannot reprocess: no cached snapshot available');
+        }
+    }
+
+    /**
+     * 检查是否有缓存数据
+     */
+    get hasCache(): boolean {
+        return !!this.lastSnapshot;
     }
 
     /**

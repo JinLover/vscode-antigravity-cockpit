@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { CONFIG_KEYS, TIMING, LOG_LEVELS, STATUS_BAR_FORMAT } from './constants';
+import { logger } from './log_service';
 
 /** 配置对象接口 */
 export interface CockpitConfig {
@@ -71,6 +72,7 @@ class ConfigService {
         value: CockpitConfig[K], 
         target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global,
     ): Promise<void> {
+        logger.info(`Updating config '${this.configSection}.${key}':`, JSON.stringify(value));
         const config = vscode.workspace.getConfiguration(this.configSection);
         await config.update(key, value, target);
     }
@@ -79,15 +81,23 @@ class ConfigService {
      * 切换置顶模型
      */
     async togglePinnedModel(modelId: string): Promise<string[]> {
+        logger.info(`Toggling pin state for model: ${modelId}`);
         const config = this.getConfig();
         let pinnedModels = [...config.pinnedModels];
 
-        if (pinnedModels.includes(modelId)) {
-            pinnedModels = pinnedModels.filter(id => id !== modelId);
+        const existingIndex = pinnedModels.findIndex(
+            p => p.toLowerCase() === modelId.toLowerCase()
+        );
+
+        if (existingIndex > -1) {
+            logger.info(`Model ${modelId} found at index ${existingIndex}, removing.`);
+            pinnedModels.splice(existingIndex, 1);
         } else {
+            logger.info(`Model ${modelId} not found, adding.`);
             pinnedModels.push(modelId);
         }
 
+        logger.info(`New pinned models: ${JSON.stringify(pinnedModels)}`);
         await this.updateConfig('pinnedModels', pinnedModels);
         return pinnedModels;
     }
