@@ -316,13 +316,13 @@
                 ${createDetailItem(i18n['feature.knowledgeBase'] || 'Knowledge Base', getFeatureStatus(userInfo.knowledgeBaseEnabled))}
                 ${createDetailItem(i18n['feature.mcp'] || 'MCP Servers', getFeatureStatus(userInfo.allowMcpServers))}
                 ${createDetailItem(i18n['feature.gitCommit'] || 'Git Commit', getFeatureStatus(userInfo.canGenerateCommitMessages))}
+                ${createDetailItem(i18n['feature.context'] || 'Context Window', userInfo.maxNumChatInputTokens)}
             </div>
 
             <div class="${detailsClass}" id="profile-more">
                 <div class="profile-grid">
                     ${createDetailItem(i18n['feature.fastMode'] || 'Fast Mode', getFeatureStatus(userInfo.hasAutocompleteFastMode))}
                     ${createDetailItem(i18n['feature.moreCredits'] || 'Can Buy Credits', getFeatureStatus(userInfo.canBuyMoreCredits))}
-                    ${createDetailItem(i18n['feature.context'] || 'Context Window', userInfo.maxNumChatInputTokens)}
                     
                     ${createDetailItem('Teams Tier', userInfo.teamsTier)}
                     ${createDetailItem('User ID', userInfo.userTierId || 'N/A')}
