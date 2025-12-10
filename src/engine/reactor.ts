@@ -395,6 +395,12 @@ export class ReactorCore {
             let groupIndex = 1;
             
             for (const [fingerprint, groupModels] of groupMap) {
+                // 生成稳定的 groupId：基于组内模型 ID 排序后的哈希
+                const stableGroupId = groupModels
+                    .map(m => m.modelId)
+                    .sort()
+                    .join('_');
+                
                 // 锚点共识：查找组内模型的自定义名称
                 let groupName = '';
                 const customNames = config.groupingCustomNames;
@@ -430,7 +436,7 @@ export class ReactorCore {
                 
                 const firstModel = groupModels[0];
                 groups.push({
-                    groupId: fingerprint,
+                    groupId: stableGroupId,
                     groupName,
                     models: groupModels,
                     remainingPercentage: firstModel.remainingPercentage ?? 0,
