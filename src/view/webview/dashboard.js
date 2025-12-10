@@ -43,7 +43,11 @@
         if (state.isDataMasked !== undefined) {
             isDataMasked = state.isDataMasked;
         }
+        if (state.isChartHidden !== undefined) {
+            isChartHidden = state.isChartHidden;
+        }
         updateToggleProfileButton();
+        updateToggleChartButton();
 
         // 绑定事件
         refreshBtn.addEventListener('click', handleRefresh);
@@ -55,6 +59,12 @@
         const toggleProfileBtn = document.getElementById('toggle-profile-btn');
         if (toggleProfileBtn) {
             toggleProfileBtn.addEventListener('click', handleToggleProfile);
+        }
+        
+        // 图表开关按钮
+        const toggleChartBtn = document.getElementById('toggle-chart-btn');
+        if (toggleChartBtn) {
+            toggleChartBtn.addEventListener('click', handleToggleChart);
         }
 
         // 事件委托：处理置顶开关
@@ -91,6 +101,27 @@
                 btn.classList.add('toggle-off');
             } else {
                 btn.textContent = (i18n['profile.planDetails'] || 'Plan') + ' ▲';
+                btn.classList.remove('toggle-off');
+            }
+        }
+    }
+    
+    function handleToggleChart() {
+        isChartHidden = !isChartHidden;
+        const state = vscode.getState() || {};
+        vscode.setState({ ...state, isChartHidden });
+        updateToggleChartButton();
+        vscode.postMessage({ command: 'rerender' });
+    }
+    
+    function updateToggleChartButton() {
+        const btn = document.getElementById('toggle-chart-btn');
+        if (btn) {
+            if (isChartHidden) {
+                btn.textContent = (i18n['chart.title'] || 'Trend') + ' ▼';
+                btn.classList.add('toggle-off');
+            } else {
+                btn.textContent = (i18n['chart.title'] || 'Trend') + ' ▲';
                 btn.classList.remove('toggle-off');
             }
         }
@@ -317,6 +348,7 @@
     let isProfileExpanded = false;
     let isProfileHidden = false;  // 控制整个计划详情卡片的显示/隐藏
     let isDataMasked = false;     // 控制数据是否显示为 ***
+    let isChartHidden = false;    // 控制历史趋势图表的显示/隐藏
 
     function renderUserProfile(userInfo) {
         // 如果用户选择隐藏计划详情，直接返回不渲染
@@ -519,6 +551,11 @@
     ];
 
     function renderHistoryChart(history, models) {
+        // 如果用户选择隐藏图表，直接返回不渲染
+        if (isChartHidden) {
+            return;
+        }
+        
         const card = document.createElement('div');
         card.className = 'card full-width history-chart-card';
         

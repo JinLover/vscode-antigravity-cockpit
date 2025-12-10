@@ -66,6 +66,7 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         // Chart
         'chart.title': 'Usage Trend',
         'chart.noData': 'No history data',
+        'chart.toggle': 'Toggle Usage Trend Chart',
         
         // User Profile
         'profile.plan': 'Plan',
@@ -159,6 +160,7 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         // Chart
         'chart.title': '使用趋势',
         'chart.noData': '暂无历史数据',
+        'chart.toggle': '切换使用趋势图表',
 
         // User Profile
         'profile.plan': '计划',

@@ -259,6 +259,9 @@ export class CockpitHUD {
             <button id="toggle-profile-btn" class="refresh-btn" title="${t('profile.togglePlan')}">
                 ${t('profile.planDetails')}
             </button>
+            <button id="toggle-chart-btn" class="refresh-btn" title="${t('chart.toggle')}">
+                ${t('chart.title')}
+            </button>
         </div>
     </header>
 
