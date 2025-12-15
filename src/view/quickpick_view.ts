@@ -160,25 +160,25 @@ export class QuickPickView {
         });
 
         items.push({
-            label: `$(sync) ${t('dashboard.refresh')}`,
+            label: `🔄 ${t('dashboard.refresh')}`,
             description: '',
             action: 'refresh',
         });
 
         items.push({
-            label: `$(output) ${t('help.openLogs')}`,
+            label: `📋 ${t('help.openLogs')}`,
             description: '',
             action: 'logs',
         });
 
         items.push({
-            label: `$(gear) ${t('quickpick.openSettings')}`,
+            label: `⚙️ ${t('quickpick.openSettings')}`,
             description: '',
             action: 'settings',
         });
 
         items.push({
-            label: `$(browser) ${t('quickpick.switchToWebview')}`,
+            label: `🖥️ ${t('quickpick.switchToWebview')}`,
             description: '',
             action: 'switchToWebview',
         });

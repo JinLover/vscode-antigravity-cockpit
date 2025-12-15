@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.24] - 2025-12-15
+
+### Changed
+- QuickPick mode: Use emoji icons for better visibility across all themes
+
+---
+
 ## [1.4.23] - 2025-12-15
 
 ### Added
