@@ -10,13 +10,15 @@ import { logger } from './shared/log_service';
 import { configService, CockpitConfig } from './shared/config_service';
 import { t } from './shared/i18n';
 import { CockpitHUD } from './view/hud';
-import { QUOTA_THRESHOLDS, STATUS_BAR_FORMAT, FEEDBACK_URL } from './shared/constants';
+import { QuickPickView } from './view/quickpick_view';
+import { QUOTA_THRESHOLDS, STATUS_BAR_FORMAT, FEEDBACK_URL, DISPLAY_MODE } from './shared/constants';
 import { QuotaSnapshot, WebviewMessage } from './shared/types';
 
 // 全局模块实例
 let hunter: ProcessHunter;
 let reactor: ReactorCore;
 let hud: CockpitHUD;
+let quickPickView: QuickPickView;
 let statusBarItem: vscode.StatusBarItem;
 let systemOnline = false;
 
@@ -43,6 +45,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     hunter = new ProcessHunter();
     reactor = new ReactorCore();
     hud = new CockpitHUD(context.extensionUri);
+    quickPickView = new QuickPickView();
+
+    // 设置 QuickPick 刷新回调
+    quickPickView.onRefresh(() => {
+        reactor.syncTelemetry();
+    });
 
     // 创建状态栏
     statusBarItem = createStatusBar(context);
@@ -91,8 +99,32 @@ function createStatusBar(context: vscode.ExtensionContext): vscode.StatusBarItem
 function registerCommands(context: vscode.ExtensionContext): void {
     // 打开 Dashboard
     context.subscriptions.push(
-        vscode.commands.registerCommand('agCockpit.open', () => {
-            hud.revealHud();
+        vscode.commands.registerCommand('agCockpit.open', async () => {
+            const config = configService.getConfig();
+            if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
+                quickPickView.show();
+            } else {
+                const success = await hud.revealHud();
+                if (!success) {
+                    // Webview 创建失败，引导用户切换到 QuickPick 模式
+                    const selection = await vscode.window.showWarningMessage(
+                        t('webview.failedPrompt'),
+                        t('webview.switchToQuickPick'),
+                        t('webview.cancel'),
+                    );
+                    if (selection === t('webview.switchToQuickPick')) {
+                        await configService.updateConfig('displayMode', DISPLAY_MODE.QUICKPICK);
+                        // 同时关闭分组模式，因为 QuickPick 不支持分组
+                        if (config.groupingEnabled) {
+                            await configService.updateConfig('groupingEnabled', false);
+                        }
+                        vscode.window.showInformationMessage(t('webview.switchedToQuickPick'));
+                        // 刷新状态栏以反映分组模式关闭
+                        reactor.reprocess();
+                        quickPickView.show();
+                    }
+                }
+            }
         }),
     );
 
@@ -432,6 +464,9 @@ function setupTelemetryHandling(): void {
             lastSuccessfulUpdate: lastSuccessfulUpdate,
         });
 
+        // 更新 QuickPick 视图数据
+        quickPickView.updateSnapshot(snapshot);
+
         // 更新状态栏
         updateStatusBar(snapshot, config);
     });
@@ -761,8 +796,16 @@ function checkAndNotifyQuota(snapshot: QuotaSnapshot, config: CockpitConfig): vo
 /**
  * 处理配置变化
  */
-function handleConfigChange(config: CockpitConfig): void {
+async function handleConfigChange(config: CockpitConfig): Promise<void> {
     logger.debug('Configuration changed', config);
+    
+    // 如果切换到 QuickPick 模式，自动关闭分组模式（QuickPick 不支持分组）
+    if (config.displayMode === DISPLAY_MODE.QUICKPICK && config.groupingEnabled) {
+        logger.info('Switching to QuickPick mode, disabling grouping');
+        await configService.updateConfig('groupingEnabled', false);
+        // 不需要继续处理，因为 updateConfig 会触发新的 configChange 事件
+        return;
+    }
     
     // 仅当刷新间隔变化时重启 Reactor
     const newInterval = configService.getRefreshIntervalMs();

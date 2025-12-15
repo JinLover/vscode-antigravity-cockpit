@@ -69,6 +69,7 @@ export const CONFIG_KEYS = {
     GROUP_MAPPINGS: 'groupMappings',
     WARNING_THRESHOLD: 'warningThreshold',
     CRITICAL_THRESHOLD: 'criticalThreshold',
+    DISPLAY_MODE: 'displayMode',
 } as const;
 
 /** 状态栏显示格式 */
@@ -87,4 +88,12 @@ export const LOG_LEVELS = {
     INFO: 'info',
     WARN: 'warn',
     ERROR: 'error',
+} as const;
+
+/** 显示模式 */
+export const DISPLAY_MODE = {
+    /** Webview 面板（默认） */
+    WEBVIEW: 'webview',
+    /** QuickPick 菜单（兼容模式） */
+    QUICKPICK: 'quickpick',
 } as const;

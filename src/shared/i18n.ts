@@ -145,6 +145,17 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'offline.hoursAgo': '{count}h ago',
         // Error messages
         'error.invalidResponse': 'Invalid server response: {details}',
+        // QuickPick mode
+        'quickpick.placeholder': 'Click a model to toggle status bar pinning',
+        'quickpick.quotaSection': 'Model Quotas',
+        'quickpick.actionsSection': 'Actions',
+        'quickpick.noData': 'No quota data',
+        'quickpick.openSettings': 'Open Settings',
+        // Webview fallback
+        'webview.failedPrompt': 'Failed to load Webview. Switch to QuickPick compatibility mode?',
+        'webview.switchToQuickPick': 'Switch',
+        'webview.cancel': 'Cancel',
+        'webview.switchedToQuickPick': 'Switched to QuickPick mode. Click status bar to view quotas.',
     },
     'zh-cn': {
         // 状态栏
@@ -276,6 +287,17 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'offline.hoursAgo': '{count}小时前',
         // Error messages
         'error.invalidResponse': '服务器响应无效: {details}',
+        // QuickPick mode
+        'quickpick.placeholder': '点击模型可切换状态栏固定',
+        'quickpick.quotaSection': '模型配额',
+        'quickpick.actionsSection': '操作',
+        'quickpick.noData': '暂无配额数据',
+        'quickpick.openSettings': '打开设置',
+        // Webview fallback
+        'webview.failedPrompt': 'Webview 加载失败，是否切换到 QuickPick 兼容模式？',
+        'webview.switchToQuickPick': '切换',
+        'webview.cancel': '取消',
+        'webview.switchedToQuickPick': '已切换到 QuickPick 模式，点击状态栏查看配额。',
     },
 };
 

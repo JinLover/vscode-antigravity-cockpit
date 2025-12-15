@@ -29,8 +29,9 @@ export class CockpitHUD {
 
     /**
      * 显示 HUD 面板
+     * @returns 是否成功打开
      */
-    public revealHud(snapshot?: QuotaSnapshot): void {
+    public async revealHud(snapshot?: QuotaSnapshot): Promise<boolean> {
         if (snapshot) {
             this.cachedTelemetry = snapshot;
         }
@@ -41,36 +42,44 @@ export class CockpitHUD {
         if (existingPanel) {
             existingPanel.reveal(column);
             this.refreshWithCachedData();
-            return;
+            return true;
         }
 
-        const panel = vscode.window.createWebviewPanel(
-            CockpitHUD.viewType,
-            t('dashboard.title'),
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                localResourceRoots: [this.extensionUri],
-                retainContextWhenHidden: true,
-            },
-        );
+        try {
+            const panel = vscode.window.createWebviewPanel(
+                CockpitHUD.viewType,
+                t('dashboard.title'),
+                column || vscode.ViewColumn.One,
+                {
+                    enableScripts: true,
+                    localResourceRoots: [this.extensionUri],
+                    retainContextWhenHidden: true,
+                },
+            );
 
-        this.panels.set('main', panel);
+            this.panels.set('main', panel);
 
-        panel.onDidDispose(() => {
-            this.panels.delete('main');
-        });
+            panel.onDidDispose(() => {
+                this.panels.delete('main');
+            });
 
-        panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
-            if (this.messageRouter) {
-                this.messageRouter(message);
+            panel.webview.onDidReceiveMessage((message: WebviewMessage) => {
+                if (this.messageRouter) {
+                    this.messageRouter(message);
+                }
+            });
+
+            panel.webview.html = this.generateHtml(panel.webview);
+
+            if (this.cachedTelemetry) {
+                this.refreshWithCachedData();
             }
-        });
 
-        panel.webview.html = this.generateHtml(panel.webview);
-
-        if (this.cachedTelemetry) {
-            this.refreshWithCachedData();
+            return true;
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error(`Failed to create Webview panel: ${err.message}`);
+            return false;
         }
     }
 

@@ -3,7 +3,7 @@
   "displayName": "Antigravity Cockpit",
   "icon": "assets/icon.png",
   "description": "A premium, dashboard-style quota monitor for Antigravity AI.",
-  "version": "1.4.21",
+  "version": "1.4.22",
   "publisher": "jlcodes",
   "engines": {
     "vscode": "^1.90.0"
@@ -195,6 +195,19 @@
           "minimum": 1,
           "maximum": 50,
           "description": "Critical threshold percentage. Quota below this value will show red danger alert. (1-50)"
+        },
+        "agCockpit.displayMode": {
+          "type": "string",
+          "default": "webview",
+          "enum": [
+            "webview",
+            "quickpick"
+          ],
+          "enumDescriptions": [
+            "Full dashboard with Webview (default)",
+            "Lightweight QuickPick menu (better compatibility)"
+          ],
+          "description": "Display mode for quota information. Use 'quickpick' if Webview doesn't work on your system."
         }
       }
     },

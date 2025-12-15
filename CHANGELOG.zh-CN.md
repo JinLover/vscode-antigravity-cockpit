@@ -8,6 +8,17 @@
 
 ---
 
+## [1.4.22] - 2025-12-15
+
+### 新增
+- QuickPick 兼容模式：使用 VSCode 原生 QuickPick API 替代 Webview
+- 更好兼容 Webview 不受支持的环境
+- 通过 `agCockpit.displayMode: "quickpick"` 配置启用
+- 功能：查看所有模型配额、切换状态栏固定、刷新数据
+- Webview 加载失败时自动引导用户切换到 QuickPick 模式
+
+---
+
 ## [1.4.21] - 2025-12-15
 
 ### 变更

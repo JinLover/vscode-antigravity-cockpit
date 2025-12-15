@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.22] - 2025-12-15
+
+### Added
+- QuickPick compatibility mode: Use VSCode native QuickPick API instead of Webview
+- Better compatibility for environments where Webview is not supported
+- Configure via `agCockpit.displayMode: "quickpick"`
+- Features: View all model quotas, toggle status bar pinning, refresh data
+- Auto-detect Webview failure and prompt user to switch to QuickPick mode
+
+---
+
 ## [1.4.21] - 2025-12-15
 
 ### Changed
