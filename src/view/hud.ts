@@ -200,6 +200,11 @@ export class CockpitHUD {
                 isExhausted: m.isExhausted,
                 timeUntilResetFormatted: m.timeUntilResetFormatted,
                 resetTimeDisplay: m.resetTimeDisplay,
+                // 模型能力字段
+                supportsImages: m.supportsImages,
+                isRecommended: m.isRecommended,
+                tagTitle: m.tagTitle,
+                supportedMimeTypes: m.supportedMimeTypes,
             })),
             groups: snapshot.groups?.map(g => ({
                 groupId: g.groupId,
@@ -211,6 +216,11 @@ export class CockpitHUD {
                 models: g.models.map(m => ({
                     label: m.label,
                     modelId: m.modelId,
+                    // 模型能力字段
+                    supportsImages: m.supportsImages,
+                    isRecommended: m.isRecommended,
+                    tagTitle: m.tagTitle,
+                    supportedMimeTypes: m.supportedMimeTypes,
                 })),
             })),
         };

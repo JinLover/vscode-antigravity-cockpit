@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.15] - 2025-12-18
+
+### Improved
+- **Model Capabilities**: Added rich tooltips for model capabilities, triggered by hovering over the model name.
+- **Auto-Grouping**: Optimized logic with a new fallback strategy.
+
+---
+
 ## [1.5.14] - 2025-12-18
 
 ### Improved

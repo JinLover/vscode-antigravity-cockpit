@@ -58,6 +58,9 @@
 
         // 绑定事件
         refreshBtn.addEventListener('click', handleRefresh);
+        
+        // 初始化富文本 Tooltip
+        initRichTooltip();
         if (resetOrderBtn) {
             resetOrderBtn.addEventListener('click', handleResetOrder);
         }
@@ -519,6 +522,13 @@
         return i18n['dashboard.danger'] || 'Danger';                                        // 危险
     }
 
+    /**
+     * 解析模型能力，返回图标数组
+     * @param {Object} model 模型对象
+     * @returns {string[]} 能力图标 HTML 数组
+     */
+
+
     function togglePin(modelId) {
         vscode.postMessage({ command: 'togglePin', modelId: modelId });
     }
@@ -693,7 +703,7 @@
         bar.className = 'auto-group-toolbar';
         bar.innerHTML = `
             <span class="grouping-hint">
-                ${i18n['grouping.description'] || '此模式将共享配额的模型聚合展示，支持重命名、排序并同步至状态栏。您可以点击右侧“自动分组”智能归类，或点击上方「配额分组」切换回全部模型视图。'}
+                ${i18n['grouping.description'] || 'This mode aggregates models sharing the same quota. Supports renaming, sorting, and status bar sync. Click "Auto Group" to intelligently categorize, or toggle "Quota Groups" above to switch back.'}
             </span>
             <button id="auto-group-btn" class="auto-group-link" title="${i18n['grouping.autoGroupHint'] || 'Recalculate groups based on current quota'}">
                 <span class="icon">🔄</span>
@@ -852,6 +862,117 @@
         `;
     }
 
+    // ============ 富文本工具提示 ============
+
+    function initRichTooltip() {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'rich-tooltip hidden';
+        document.body.appendChild(tooltip);
+
+        let activeTarget = null;
+
+        document.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('[data-tooltip-html]');
+            if (target && target !== activeTarget) {
+                activeTarget = target;
+                const html = target.getAttribute('data-tooltip-html');
+                
+                // 解码 HTML
+                const decodedHtml = decodeURIComponent(html);
+                
+                tooltip.innerHTML = decodedHtml;
+                tooltip.classList.remove('hidden');
+                
+                const rect = target.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                
+                // 计算位置：默认在下方，如果下方空间不足则在上方
+                let top = rect.bottom + 8;
+                let left = rect.left + (rect.width - tooltipRect.width) / 2;
+                
+                // 边界检查
+                if (top + tooltipRect.height > window.innerHeight) {
+                    top = rect.top - tooltipRect.height - 8;
+                }
+                if (left < 10) left = 10;
+                if (left + tooltipRect.width > window.innerWidth - 10) {
+                    left = window.innerWidth - tooltipRect.width - 10;
+                }
+
+                tooltip.style.top = top + 'px';
+                tooltip.style.left = left + 'px';
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('[data-tooltip-html]');
+            if (target && target === activeTarget) {
+                activeTarget = null;
+                tooltip.classList.add('hidden');
+            }
+        });
+        
+        // 滚动时隐藏
+        window.addEventListener('scroll', () => {
+             if (activeTarget) {
+                activeTarget = null;
+                tooltip.classList.add('hidden');
+             }
+        }, true);
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    /**
+     * 解析模型能力，返回能力列表
+     */
+    function getModelCapabilityList(model) {
+        const caps = [];
+        const mime = model.supportedMimeTypes || {};
+        
+        // 1. 图片能力
+        if (model.supportsImages || Object.keys(mime).some(k => k.startsWith('image/'))) {
+            caps.push({
+                icon: '🖼️',
+                text: i18n['capability.vision'] || 'Vision'
+            });
+        }
+        
+        // 2. 文档能力
+        if (mime['application/pdf'] || mime['text/plain'] || mime['application/rtf']) {
+            caps.push({
+                icon: '📄',
+                text: i18n['capability.docs'] || 'Documents'
+            });
+        }
+        
+        // 3. 音视频能力
+        if (Object.keys(mime).some(k => k.startsWith('video/') || k.startsWith('audio/'))) {
+            caps.push({
+                icon: '🎬',
+                text: i18n['capability.media'] || 'Media'
+            });
+        }
+        
+        return caps;
+    }
+
+    /**
+     * 生成能力 Tooltip HTML
+     */
+    function generateCapabilityTooltip(caps) {
+        return caps.map(cap => 
+            `<div class="rich-tooltip-item ${cap.className || ''}"><span class="icon">${cap.icon}</span><span class="text">${cap.text}</span></div>`
+        ).join('');
+    }
+
     function renderGroupCard(group, pinnedGroups) {
         const pct = group.remainingPercentage || 0;
         const color = getHealthColor(pct);
@@ -871,10 +992,23 @@
         card.addEventListener('drop', handleDrop, false);
         card.addEventListener('dragend', handleDragEnd, false);
 
-        // 生成组内模型列表
-        const modelList = group.models.map(m => 
-            `<span class="group-model-tag">${m.label}</span>`
-        ).join('');
+        // 生成组内模型列表（带能力图标）
+        const modelList = group.models.map(m => {
+            const caps = getModelCapabilityList(m);
+            const tagHtml = m.tagTitle ? `<span class="tag-new">${m.tagTitle}</span>` : '';
+            const recClass = m.isRecommended ? ' recommended' : '';
+            
+            // 如果有能力，添加悬浮属性
+            let tooltipAttr = '';
+            let capsIndicator = '';
+            if (caps.length > 0) {
+                const tooltipHtml = encodeURIComponent(generateCapabilityTooltip(caps));
+                tooltipAttr = ` data-tooltip-html="${tooltipHtml}"`;
+                capsIndicator = `<span class="caps-dot">✨</span>`;
+            }
+
+            return `<span class="group-model-tag${recClass}" title="${m.modelId}"${tooltipAttr}>${m.label}${tagHtml}${capsIndicator}</span>`;
+        }).join('');
 
         card.innerHTML = `
             <div class="card-title">
@@ -948,9 +1082,27 @@
         // 获取自定义名称，如果没有则使用原始 label
         const displayName = (modelCustomNames && modelCustomNames[model.modelId]) || model.label;
         const originalLabel = model.label;
+        
+        // 生成能力数据
+        const caps = getModelCapabilityList(model);
+        let capsIconHtml = '';
+        let tooltipAttr = '';
+        
+        // 如果有能力，生成标题栏图标，并设置 tooltip
+        if (caps.length > 0) {
+            const tooltipHtml = encodeURIComponent(generateCapabilityTooltip(caps));
+            tooltipAttr = ` data-tooltip-html="${tooltipHtml}"`;
+            capsIconHtml = `<span class="title-caps-trigger">✨</span>`;
+        }
+        
+        // 生成 New 标签
+        const tagHtml = model.tagTitle ? `<span class="tag-new">${model.tagTitle}</span>` : '';
+        
+        // 推荐模型高亮样式
+        const recommendedClass = model.isRecommended ? ' card-recommended' : '';
 
         const card = document.createElement('div');
-        card.className = 'card draggable';
+        card.className = `card draggable${recommendedClass}`;
         card.setAttribute('draggable', 'true');
         card.setAttribute('data-id', model.modelId);
 
@@ -965,7 +1117,11 @@
         card.innerHTML = `
             <div class="card-title">
                 <span class="drag-handle" data-tooltip="${i18n['dashboard.dragHint'] || 'Drag to reorder'}">⋮⋮</span>
-                <span class="label model-name" title="${model.modelId} (${originalLabel})">${displayName}</span>
+                <div class="title-wrapper"${tooltipAttr}>
+                    <span class="label model-name" title="${model.modelId} (${originalLabel})">${displayName}</span>
+                    ${tagHtml}
+                    ${capsIconHtml}
+                </div>
                 <div class="actions">
                     <button class="rename-model-btn icon-btn" data-model-id="${model.modelId}" title="${i18n['model.rename'] || 'Rename Model'}">✏️</button>
                     <label class="switch" data-tooltip="${i18n['dashboard.pinHint'] || 'Pin to Status Bar'}">

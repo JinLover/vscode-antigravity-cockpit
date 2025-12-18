@@ -423,6 +423,11 @@ export class ReactorCore {
                     resetTimeDisplay: this.formatIso(reset),
                     timeUntilReset: delta,
                     timeUntilResetFormatted: this.formatDelta(delta),
+                    // 模型能力字段
+                    supportsImages: m.supportsImages,
+                    isRecommended: m.isRecommended,
+                    tagTitle: m.tagTitle,
+                    supportedMimeTypes: m.supportedMimeTypes,
                 };
             });
 
@@ -598,26 +603,78 @@ export class ReactorCore {
      * 返回 modelId -> groupId 的映射
      */
     static calculateGroupMappings(models: ModelQuotaInfo[]): Record<string, string> {
-        const mappings: Record<string, string> = {};
-        const groupMap = new Map<string, string[]>();
-        
-        // 根据配额指纹进行分组
+        // 1. 尝试按配额状态分组（旧逻辑）
+        const statsMap = new Map<string, string[]>();
         for (const model of models) {
             const fingerprint = `${model.remainingFraction?.toFixed(6)}_${model.resetTime.getTime()}`;
-            if (!groupMap.has(fingerprint)) {
-                groupMap.set(fingerprint, []);
+            if (!statsMap.has(fingerprint)) {
+                statsMap.set(fingerprint, []);
             }
-            groupMap.get(fingerprint)!.push(model.modelId);
+            statsMap.get(fingerprint)!.push(model.modelId);
+        }
+
+        // 2. 检查是否所有模型都被分到了同一个大组
+        // 这通常发生在所有模型都是满血状态（或状态完全一致）时，此时按状态分组没有意义
+        if (statsMap.size === 1 && models.length > 1) {
+            logger.info('Auto-grouping detected degenerate state (all models identical), falling back to ID-based fallback grouping.');
+            return this.groupBasedOnSeries(models);
         }
         
-        // 为每个组生成稳定的 groupId
-        for (const [, modelIds] of groupMap) {
+        // 3. 正常情况：使用配额指纹生成映射
+        const mappings: Record<string, string> = {};
+        for (const [, modelIds] of statsMap) {
             const stableGroupId = modelIds.sort().join('_');
             for (const modelId of modelIds) {
                 mappings[modelId] = stableGroupId;
             }
         }
         
+        return mappings;
+    }
+
+    /**
+     * 基于模型ID的硬编码兜底分组逻辑
+     */
+    private static groupBasedOnSeries(models: ModelQuotaInfo[]): Record<string, string> {
+        const seriesMap = new Map<string, string[]>();
+
+        // 定义硬编码的分组规则
+        const GROUPS = {
+            GEMINI: ['MODEL_PLACEHOLDER_M8', 'MODEL_PLACEHOLDER_M7'],
+            GEMINI_FLASH: ['MODEL_PLACEHOLDER_M18'],
+            CLAUDE_GPT: [
+                'MODEL_CLAUDE_4_5_SONNET',
+                'MODEL_CLAUDE_4_5_SONNET_THINKING',
+                'MODEL_PLACEHOLDER_M12', // Claude Opus 4.5 Thinking
+                'MODEL_OPENAI_GPT_OSS_120B_MEDIUM'
+            ]
+        };
+
+        for (const model of models) {
+            const id = model.modelId;
+            let groupName = 'Other';
+
+            if (GROUPS.GEMINI.includes(id)) {
+                groupName = 'Gemini';
+            } else if (GROUPS.GEMINI_FLASH.includes(id)) {
+                groupName = 'Gemini Flash';
+            } else if (GROUPS.CLAUDE_GPT.includes(id)) {
+                groupName = 'Claude';
+            }
+
+            if (!seriesMap.has(groupName)) {
+                seriesMap.set(groupName, []);
+            }
+            seriesMap.get(groupName)!.push(id);
+        }
+
+        const mappings: Record<string, string> = {};
+        for (const [, modelIds] of seriesMap) {
+            const stableGroupId = modelIds.sort().join('_');
+            for (const modelId of modelIds) {
+                mappings[modelId] = stableGroupId;
+            }
+        }
         return mappings;
     }
 }

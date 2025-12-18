@@ -837,6 +837,152 @@ input:checked + .slider:before {
     border: 1px solid rgba(139, 148, 158, 0.3);
 }
 
+/* ============ 模型能力展示样式 ============ */
+
+/* 推荐卡片高亮 */
+.card-recommended {
+    border: 1px solid var(--accent) !important;
+    box-shadow: 0 0 12px rgba(47, 129, 247, 0.15);
+}
+
+.card-recommended:hover {
+    box-shadow: 0 6px 20px rgba(47, 129, 247, 0.25);
+}
+
+/* New 标签 */
+.tag-new {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c77dff 100%);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: tagPulse 2s ease-in-out infinite;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+@keyframes tagPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+/* 标题包装器（用于标题 + New 标签对齐） */
+.title-wrapper {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.title-wrapper .label {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* 分组模型标签增强 */
+.group-model-tag.recommended {
+    border-color: var(--accent);
+    background: rgba(47, 129, 247, 0.1);
+}
+
+.group-model-tag .tag-new {
+    font-size: 8px;
+    padding: 1px 4px;
+    margin-left: 4px;
+}
+
+.group-model-tag .caps-dot {
+    font-size: 10px;
+    color: var(--accent);
+    margin-left: 4px;
+    animation: twinkle 1.5s infinite alternate;
+}
+
+@keyframes twinkle {
+    from { opacity: 0.6; }
+    to { opacity: 1; transform: scale(1.1); }
+}
+
+/* 能力触发器（标题栏内） */
+.title-caps-trigger {
+    font-size: 12px;
+    margin-left: 6px;
+    cursor: default;
+    transition: transform 0.2s;
+    animation: twinkle 2s infinite alternate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-caps-trigger:hover {
+    transform: scale(1.2);
+}
+
+/* 富文本工具提示 */
+.rich-tooltip {
+    position: fixed;
+    z-index: 9999;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-width: 200px;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.15s ease-out;
+    backdrop-filter: blur(8px);
+}
+
+.rich-tooltip.hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.rich-tooltip-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(128, 128, 128, 0.2);
+}
+
+/* 推荐项高亮 */
+.rich-tooltip-item.recommended-item {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.08), transparent);
+    margin: -6px -12px 6px -12px; /* 负边距抵消 padding */
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.rich-tooltip-item.recommended-item .text {
+    color: #DAA520; /* GoldenRod */
+    font-weight: 600;
+}
+
+.rich-tooltip-item:last-child {
+    border-bottom: none;
+}
+
+.rich-tooltip-item .icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.rich-tooltip-item .text {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
 /* Merge Target Highlight */
 .card.merge-target {
     border: 2px dashed var(--success);

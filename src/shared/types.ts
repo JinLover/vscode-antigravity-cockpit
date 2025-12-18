@@ -37,6 +37,14 @@ export interface ModelQuotaInfo {
     timeUntilResetFormatted: string;
     /** 格式化的重置时间显示 */
     resetTimeDisplay: string;
+    /** 是否支持图片输入 */
+    supportsImages?: boolean;
+    /** 是否为推荐模型 */
+    isRecommended?: boolean;
+    /** 标签标题（如 "New"） */
+    tagTitle?: string;
+    /** 支持的 MIME 类型映射 */
+    supportedMimeTypes?: Record<string, boolean>;
 }
 
 /** 配额分组 - 共享相同配额的模型集合 */
@@ -110,6 +118,10 @@ export interface ClientModelConfig {
     supportsImages?: boolean;
     isRecommended?: boolean;
     allowedTiers?: string[];
+    /** 标签标题（如 "New"） */
+    tagTitle?: string;
+    /** 支持的 MIME 类型映射 */
+    supportedMimeTypes?: Record<string, boolean>;
 }
 
 /** 团队配置 */

@@ -117,6 +117,8 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'grouping.toggleHint': 'Toggle group view',
         'grouping.autoGroup': 'Auto Group',
         'grouping.autoGroupHint': 'Recalculate groups based on current quota',
+        'grouping.description': 'This mode aggregates models sharing the same quota. Supports renaming, sorting, and status bar sync. Click "Auto Group" to intelligently categorize, or toggle "Quota Groups" above to switch back.',
+
         // Model Rename
         'model.rename': 'Rename Model',
         'model.renamePrompt': 'Enter new name for this model:',
@@ -181,6 +183,12 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'webview.switchToQuickPick': 'Switch',
         'webview.cancel': 'Cancel',
         'webview.switchedToQuickPick': 'Switched to QuickPick mode. Click status bar to view quotas.',
+        // Capabilities
+        'capability.vision': 'Vision: Supports image inputs (JPEG, PNG, WEBP, HEIC)',
+        'capability.docs': 'Documents: Supports PDF, Text, RTF',
+        'capability.media': 'Media: Supports audio and video inputs',
+        'capability.tools': 'Tools',
+        'capability.recommended': 'Recommended Model',
     },
     'zh-cn': {
         // 状态栏
@@ -284,6 +292,8 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'grouping.toggleHint': '切换分组视图',
         'grouping.autoGroup': '自动分组',
         'grouping.autoGroupHint': '根据当前配额重新计算分组',
+        'grouping.description': '此模式将共享配额的模型聚合展示，支持重命名、排序并同步至状态栏。您可以点击右侧“自动分组”智能归类，或点击上方「配额分组」切换回全部模型视图。',
+
         // Model Rename
         'model.rename': '重命名模型',
         'model.renamePrompt': '请输入新的模型名称:',
@@ -348,6 +358,12 @@ const translations: Record<SupportedLocale, TranslationMap> = {
         'webview.switchToQuickPick': '切换',
         'webview.cancel': '取消',
         'webview.switchedToQuickPick': '已切换到 QuickPick 模式，点击状态栏查看配额。',
+        // Capabilities
+        'capability.vision': '视觉能力：支持图片输入 (JPEG, PNG, WEBP, HEIC)',
+        'capability.docs': '文档能力：支持 PDF、文本、RTF 格式',
+        'capability.media': '多媒体：支持音视频输入',
+        'capability.tools': '工具',
+        'capability.recommended': '推荐模型：性能与价格的最佳平衡',
     },
 };
 
