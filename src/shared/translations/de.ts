@@ -184,4 +184,16 @@ export const de = {
     'capability.media': 'Medien: Unterstützt Audio- und Videoeingaben',
     'capability.tools': 'Werkzeuge',
     'capability.recommended': 'Empfohlenes Modell',
+
+    // View Mode
+    'dashboard.modelName': 'Modellname',
+    'dashboard.name': 'Name',
+    'dashboard.remainingQuota': 'Verbleibendes Kontingent',
+    'grouping.nameLabel': 'Gruppenname',
+    'viewMode.title': 'Ansichtsmodus',
+    'viewMode.card': 'Kartenansicht',
+    'viewMode.list': 'Listenansicht',
+    'displayMode.title': 'Anzeigemodus',
+    'displayMode.webview': 'Dashboard (Webview)',
+    'displayMode.quickpick': 'QuickPick-Modus',
 };

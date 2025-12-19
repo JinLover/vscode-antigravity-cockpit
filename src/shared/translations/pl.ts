@@ -184,4 +184,16 @@ export const pl = {
     'capability.media': 'Media: Obsługuje audio i wideo',
     'capability.tools': 'Narzędzia',
     'capability.recommended': 'Zalecany Model',
+
+    // View Mode
+    'dashboard.modelName': 'Nazwa Modelu',
+    'dashboard.name': 'Nazwa',
+    'dashboard.remainingQuota': 'Pozostały Limit',
+    'grouping.nameLabel': 'Nazwa Grupy',
+    'viewMode.title': 'Tryb Widoku',
+    'viewMode.card': 'Widok Kart',
+    'viewMode.list': 'Widok Listy',
+    'displayMode.title': 'Tryb Wyświetlania',
+    'displayMode.webview': 'Panel (Webview)',
+    'displayMode.quickpick': 'Tryb QuickPick',
 };

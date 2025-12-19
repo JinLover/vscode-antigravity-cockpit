@@ -184,4 +184,16 @@ export const cs = {
     'capability.media': 'Média: Podporuje audio a video',
     'capability.tools': 'Nástroje',
     'capability.recommended': 'Doporučený Model',
+
+    // View Mode
+    'dashboard.modelName': 'Název Modelu',
+    'dashboard.name': 'Název',
+    'dashboard.remainingQuota': 'Zbývající Kvóta',
+    'grouping.nameLabel': 'Název Skupiny',
+    'viewMode.title': 'Režim Zobrazení',
+    'viewMode.card': 'Zobrazení Karet',
+    'viewMode.list': 'Zobrazení Seznamu',
+    'displayMode.title': 'Režim Zobrazení',
+    'displayMode.webview': 'Panel (Webview)',
+    'displayMode.quickpick': 'Režim QuickPick',
 };

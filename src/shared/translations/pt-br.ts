@@ -184,4 +184,16 @@ export const ptBR = {
     'capability.media': 'Mídia: Suporta áudio e vídeo',
     'capability.tools': 'Ferramentas',
     'capability.recommended': 'Modelo Recomendado',
+
+    // View Mode
+    'dashboard.modelName': 'Nome do Modelo',
+    'dashboard.name': 'Nome',
+    'dashboard.remainingQuota': 'Cota Restante',
+    'grouping.nameLabel': 'Nome do Grupo',
+    'viewMode.title': 'Modo de Visualização',
+    'viewMode.card': 'Visualização em Cartões',
+    'viewMode.list': 'Visualização em Lista',
+    'displayMode.title': 'Modo de Exibição',
+    'displayMode.webview': 'Painel (Webview)',
+    'displayMode.quickpick': 'Modo QuickPick',
 };

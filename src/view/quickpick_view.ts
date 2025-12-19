@@ -111,7 +111,37 @@ export class QuickPickView {
             });
         }
 
-        // 配额模型列表
+        // --- 操作按钮（移动到顶部） ---
+        items.push({
+            label: t('quickpick.actionsSection'),
+            kind: vscode.QuickPickItemKind.Separator,
+        });
+
+        items.push({
+            label: `🔄 ${t('dashboard.refresh')}`,
+            description: '',
+            action: 'refresh',
+        });
+
+        items.push({
+            label: `📋 ${t('help.openLogs')}`,
+            description: '',
+            action: 'logs',
+        });
+
+        items.push({
+            label: `⚙️ ${t('quickpick.openSettings')}`,
+            description: '',
+            action: 'settings',
+        });
+
+        items.push({
+            label: `🖥️ ${t('quickpick.switchToWebview')}`,
+            description: '',
+            action: 'switchToWebview',
+        });
+
+        // --- 配额模型列表 ---
         items.push({
             label: t('quickpick.quotaSection'),
             kind: vscode.QuickPickItemKind.Separator,
@@ -153,36 +183,6 @@ export class QuickPickView {
             });
         }
 
-        // 操作按钮
-        items.push({
-            label: t('quickpick.actionsSection'),
-            kind: vscode.QuickPickItemKind.Separator,
-        });
-
-        items.push({
-            label: `🔄 ${t('dashboard.refresh')}`,
-            description: '',
-            action: 'refresh',
-        });
-
-        items.push({
-            label: `📋 ${t('help.openLogs')}`,
-            description: '',
-            action: 'logs',
-        });
-
-        items.push({
-            label: `⚙️ ${t('quickpick.openSettings')}`,
-            description: '',
-            action: 'settings',
-        });
-
-        items.push({
-            label: `🖥️ ${t('quickpick.switchToWebview')}`,
-            description: '',
-            action: 'switchToWebview',
-        });
-
         return items;
     }
 
@@ -214,6 +214,8 @@ export class QuickPickView {
                 break;
             case 'switchToWebview':
                 await configService.updateConfig('displayMode', DISPLAY_MODE.WEBVIEW);
+                // 切换回 Webview 时自动开启分组模式
+                await configService.updateConfig('groupingEnabled', true);
                 vscode.window.showInformationMessage(t('quickpick.switchedToWebview'));
                 // 重新打开 Dashboard（这次会用 Webview）
                 vscode.commands.executeCommand('agCockpit.open');

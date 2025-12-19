@@ -104,6 +104,9 @@ export class CockpitHUD {
                 warningThreshold: config.warningThreshold,
                 criticalThreshold: config.criticalThreshold,
                 statusBarFormat: config.statusBarFormat,
+                profileHidden: config.profileHidden,
+                viewMode: config.viewMode,
+                displayMode: config.displayMode,
             });
         }
     }
@@ -262,6 +265,7 @@ export class CockpitHUD {
     private generateHtml(webview: vscode.Webview): string {
         // 获取外部资源 URI
         const styleUri = this.getWebviewUri(webview, 'src', 'view', 'webview', 'dashboard.css');
+        const listStyleUri = this.getWebviewUri(webview, 'src', 'view', 'webview', 'list_view.css');
         const scriptUri = this.getWebviewUri(webview, 'src', 'view', 'webview', 'dashboard.js');
 
         // 获取国际化文本
@@ -279,6 +283,7 @@ export class CockpitHUD {
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
     <title>${t('dashboard.title')}</title>
     <link rel="stylesheet" href="${styleUri}">
+    <link rel="stylesheet" href="${listStyleUri}">
 </head>
 <body>
     <header class="header">
@@ -321,6 +326,8 @@ export class CockpitHUD {
                 <button id="close-settings-btn" class="close-btn">×</button>
             </div>
             <div class="modal-body">
+                <!-- Display Mode and View Mode moved to bottom -->
+
                 <!-- 状态栏样式选择 -->
                 <div class="setting-item">
                     <label for="statusbar-format">📊 ${i18n.t('statusBarFormat.title')}</label>
@@ -360,6 +367,26 @@ export class CockpitHUD {
                         <span class="range-hint">(1-50)</span>
                     </div>
                     <p class="setting-hint">${t('threshold.criticalHint')}</p>
+                </div>
+
+                <hr class="setting-divider">
+
+                <!-- 视图模式选择 -->
+                <div class="setting-item">
+                    <label for="view-mode-select">🎴 ${t('viewMode.title')}</label>
+                    <select id="view-mode-select" class="setting-select">
+                        <option value="card">🎴 ${t('viewMode.card')}</option>
+                        <option value="list">☰ ${t('viewMode.list')}</option>
+                    </select>
+                </div>
+
+                <!-- 显示模式切换 -->
+                <div class="setting-item">
+                    <label for="display-mode-select">🖥️ ${t('displayMode.title') || 'Display Mode'}</label>
+                    <select id="display-mode-select" class="setting-select">
+                        <option value="webview">🎨 ${t('displayMode.webview') || 'Dashboard'}</option>
+                        <option value="quickpick">⚡ ${t('displayMode.quickpick') || 'QuickPick'}</option>
+                    </select>
                 </div>
             </div>
         </div>

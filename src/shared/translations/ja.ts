@@ -184,4 +184,16 @@ export const ja = {
     'capability.media': 'メディア: 音声・動画入力をサポート',
     'capability.tools': 'ツール',
     'capability.recommended': '推奨モデル',
+
+    // View Mode
+    'dashboard.modelName': 'モデル名',
+    'dashboard.name': '名前',
+    'dashboard.remainingQuota': '残りクォータ',
+    'grouping.nameLabel': 'グループ名',
+    'viewMode.title': '表示モード',
+    'viewMode.card': 'カードビュー',
+    'viewMode.list': 'リストビュー',
+    'displayMode.title': '表示モード',
+    'displayMode.webview': 'ダッシュボード (Webview)',
+    'displayMode.quickpick': 'QuickPickモード',
 };

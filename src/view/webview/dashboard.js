@@ -25,10 +25,12 @@
     let isRefreshing = false;
     let dragSrcEl = null;
     let currentConfig = {};
+    let lastSnapshot = null; // Store last snapshot for re-renders
     let renameGroupId = null; // 当前正在重命名的分组 ID
     let renameModelIds = [];  // 当前分组包含的模型 ID
     let renameModelId = null; // 当前正在重命名的模型 ID（非分组模式）
     let isRenamingModel = false; // 标记是否正在重命名模型（而非分组）
+    let currentViewMode = 'card';
     let renameOriginalName = ''; // 原始名称（用于重置）
 
     // 刷新冷却时间（秒），默认 120 秒
@@ -47,14 +49,11 @@
             }
         }
         
-        // 恢复计划详情显示状态
-        if (state.isProfileHidden !== undefined) {
-            isProfileHidden = state.isProfileHidden;
-        }
+        // isProfileHidden and currentViewMode are now loaded from config in handleMessage
+        // Only restore data masking from webview state
         if (state.isDataMasked !== undefined) {
             isDataMasked = state.isDataMasked;
         }
-        updateToggleProfileButton();
 
         // 绑定事件
         refreshBtn.addEventListener('click', handleRefresh);
@@ -145,6 +144,31 @@
             if (notificationCheckbox) notificationCheckbox.checked = currentConfig.notificationEnabled !== false;
             if (warningInput) warningInput.value = currentConfig.warningThreshold || 30;
             if (criticalInput) criticalInput.value = currentConfig.criticalThreshold || 10;
+
+            // View Mode Select Logic
+            const viewModeSelect = document.getElementById('view-mode-select');
+            if (viewModeSelect) {
+                viewModeSelect.value = currentViewMode;
+                viewModeSelect.onchange = () => {
+                   const newViewMode = viewModeSelect.value;
+                   vscode.postMessage({ command: 'updateViewMode', viewMode: newViewMode });
+                };
+            }
+
+            // Display Mode Select Logic (Webview vs QuickPick)
+            const displayModeSelect = document.getElementById('display-mode-select');
+            if (displayModeSelect) {
+                const currentDisplayMode = currentConfig.displayMode || 'webview';
+                displayModeSelect.value = currentDisplayMode;
+                
+                displayModeSelect.onchange = () => {
+                    const newMode = displayModeSelect.value;
+                    if (newMode === 'quickpick') {
+                        // Switching to QuickPick should close Webview
+                        vscode.postMessage({ command: 'updateDisplayMode', displayMode: 'quickpick' });
+                    }
+                };
+            }
 
             // 初始化状态栏格式选择器
             initStatusBarFormatSelector();
@@ -373,12 +397,8 @@
     }
     
     function handleToggleProfile() {
-        isProfileHidden = !isProfileHidden;
-        // 保存状态
-        const state = vscode.getState() || {};
-        vscode.setState({ ...state, isProfileHidden });
-        updateToggleProfileButton();
-        vscode.postMessage({ command: 'rerender' });
+        // Send command to extension to toggle and persist in VS Code config
+        vscode.postMessage({ command: 'toggleProfile' });
     }
     
     function updateToggleProfileButton() {
@@ -455,9 +475,19 @@
                 if (message.config.refreshInterval) {
                     refreshCooldown = message.config.refreshInterval;
                 }
+                
+                // 从配置读取 profileHidden 和 viewMode（持久化存储）
+                if (message.config.profileHidden !== undefined) {
+                    isProfileHidden = message.config.profileHidden;
+                    updateToggleProfileButton();
+                }
+                if (message.config.viewMode) {
+                    currentViewMode = message.config.viewMode;
+                }
             }
             
             render(message.data, message.config);
+            lastSnapshot = message.data; // Update global snapshot
         }
     }
 
@@ -541,7 +571,357 @@
         vscode.postMessage({ command: 'openLogs' });
     }
 
-    // 暴露给全局
+    function renderListView(snapshot, config) {
+        const container = document.createElement('div');
+        container.className = 'list-view-container';
+
+        const table = document.createElement('table');
+        table.className = 'list-view-table';
+        
+        // Define Headers (Responsive classes added in CSS)
+        // Define Headers (Responsive classes added in CSS)
+        const isGrouping = config?.groupingEnabled;
+        const nameHeader = isGrouping ? (i18n['grouping.nameLabel'] || 'Group Name') : (i18n['dashboard.modelName'] || 'Model Name');
+        const modelsHeader = i18n['grouping.models'] || 'Included Models';
+
+        let theadContent = '';
+        if (isGrouping) {
+            theadContent = `
+                <tr>
+                    <th class="col-name">${nameHeader}</th>
+                    <th class="col-models">${modelsHeader}</th>
+                    <th class="col-status-bar">${i18n['dashboard.remainingQuota'] || 'Remaining Quota'}</th>
+                    <th class="col-reset-in">${i18n['dashboard.resetIn'] || 'Reset In'}</th>
+                    <th class="col-reset-time">${i18n['dashboard.resetTime'] || 'Reset Time'}</th>
+                    <th class="col-actions">${i18n['quickpick.actionsSection'] || 'Actions'}</th>
+                </tr>
+            `;
+        } else {
+             // Non-grouping mode: No "Included Models" column
+             theadContent = `
+                <tr>
+                    <th class="col-name">${nameHeader}</th>
+                    <th class="col-status-bar">${i18n['dashboard.remainingQuota'] || 'Remaining Quota'}</th>
+                    <th class="col-reset-in">${i18n['dashboard.resetIn'] || 'Reset In'}</th>
+                    <th class="col-reset-time">${i18n['dashboard.resetTime'] || 'Reset Time'}</th>
+                    <th class="col-actions">${i18n['quickpick.actionsSection'] || 'Actions'}</th>
+                </tr>
+            `;
+        }
+
+        table.innerHTML = `
+            <thead>
+                ${theadContent}
+            </thead>
+            <tbody></tbody>
+        `;
+        const tbody = table.querySelector('tbody');
+
+        // Helper to render a common row (model or group)
+        const renderRowContent = (item, isGroup = false, isChild = false) => {
+            const pct = item.remainingPercentage || 0;
+            const color = getHealthColor(pct);
+            
+            // Determine ID and Name
+            const id = isGroup ? item.groupId : item.modelId;
+            const name = isGroup 
+                ? (config?.groupingCustomNames && config.groupingCustomNames[id]) || item.groupName 
+                : (config?.modelCustomNames && config.modelCustomNames[id]) || item.label;
+
+            // Pin Status
+            let isPinned = false;
+            if (isGroup) {
+                isPinned = config?.pinnedGroups?.includes(id);
+            } else {
+                isPinned = config?.pinnedModels?.includes(id);
+            }
+            
+            const tr = document.createElement('tr');
+            tr.draggable = true;
+            if (isGroup) {
+                tr.className = 'list-group-row';
+                tr.setAttribute('data-group-id', id);
+            } else {
+                tr.setAttribute('data-id', id);
+            }
+            if (isChild) tr.className = 'list-child-row';
+
+            // Bind Drag & Drop Events
+            tr.addEventListener('dragstart', handleDragStart, false);
+            tr.addEventListener('dragenter', handleDragEnter, false);
+            tr.addEventListener('dragover', handleDragOver, false);
+            tr.addEventListener('dragleave', handleDragLeave, false);
+            tr.addEventListener('drop', handleDrop, false);
+            tr.addEventListener('dragend', handleDragEnd, false);
+
+            // Icon & Caps
+            let iconHtml = '';
+            let capsHtml = '';
+            let tagHtml = '';
+            let recIcon = '';
+
+                if (isGrouping) {
+                    iconHtml = '<span class="icon" style="margin-right:8px">📦</span>';
+                } else {
+                    // Model specific logic
+                    const caps = getModelCapabilityList(item);
+                    if (caps.length > 0) {
+                         const tooltipHtml = encodeURIComponent(generateCapabilityTooltip(caps));
+                         capsHtml = `<div class="list-caps-icons" data-tooltip-html="${tooltipHtml}">✨</div>`;
+                    }
+                    tagHtml = item.tagTitle ? `<span class="list-tag-new">${item.tagTitle}</span>` : '';
+                    // No star icon for regular models in list view as requested
+                    recIcon = ''; 
+                }
+
+            // Columns Content
+            // 1. Name
+            let nameColContent = '';
+            // 2. Included Models
+            let modelsColContent = '';
+            
+            if (isGroup) {
+                // Group: Show Group Name
+                nameColContent = `
+                    <div class="list-model-cell">
+                        <div class="list-model-icon">${iconHtml}</div>
+                        <span class="list-model-name" title="${id}">${name}</span>
+                    </div>
+                `;
+
+                // Models column
+                const childModelsHtml = item.models.map(m => {
+                    const mName = (config?.modelCustomNames && config.modelCustomNames[m.modelId]) || m.label;
+                    
+                    // Recommended logic (class based)
+                    const recClass = m.isRecommended ? ' recommended' : '';
+                    
+                    // Tag
+                    const mTagHtml = m.tagTitle ? `<span class="list-tag-mini">${m.tagTitle}</span>` : '';
+                    
+                    // Capabilities
+                    const mCaps = getModelCapabilityList(m);
+                    let mCapsHtml = '';
+                    let mTooltipAttr = '';
+                    if (mCaps.length > 0) {
+                        const tooltipHtml = encodeURIComponent(generateCapabilityTooltip(mCaps));
+                        mCapsHtml = `<span class="list-caps-dot">✨</span>`;
+                        mTooltipAttr = `data-tooltip-html="${tooltipHtml}"`;
+                    }
+                    
+                    return `
+                        <div class="list-model-pill${recClass}" ${mTooltipAttr} title="${mName}">
+                            <span>${mName}</span>
+                            ${mTagHtml}
+                            ${mCapsHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                modelsColContent = `
+                    <div class="list-inline-models" style="margin-top:0;">
+                        ${childModelsHtml}
+                    </div>
+                `;
+            } else {
+                // Flat Model
+                const caps = getModelCapabilityList(item);
+                const hasCapabilities = caps.length > 0;
+                const tooltipAttr = hasCapabilities ? `data-tooltip-html="${encodeURIComponent(generateCapabilityTooltip(caps))}"` : '';
+                
+                nameColContent = `
+                    <div class="list-model-cell" ${tooltipAttr}>
+                        <span class="list-model-name" title="${id}">${name}</span>
+                        ${tagHtml}
+                        ${capsHtml}
+                    </div>
+                `;
+                // Models column stays empty for standalone
+                modelsColContent = '';
+            }
+
+            const nameCol = nameColContent;
+            const modelsCol = modelsColContent;
+
+            // 2. Status Circle (Empty for children, full for Group/Flat Model)
+            let statusCol = '';
+            if (!isChild) {
+                statusCol = `
+                    <div class="list-progress-circle" style="background: conic-gradient(${color} ${pct}%, var(--border-color) ${pct}%);">
+                        <span class="list-progress-text" style="color: ${color}">${pct.toFixed(0)}%</span>
+                    </div>
+                `;
+            } else {
+                statusCol = `<span style="opacity:0.3; font-size:12px;">—</span>`;
+            }
+
+            // 3. Reset In
+            let resetInCol = '';
+            if (!isChild) {
+                resetInCol = `<span class="list-text-secondary">${item.timeUntilResetFormatted || '-'}</span>`;
+            }
+
+            // 4. Reset Time
+            let resetTimeCol = '';
+            if (!isChild) {
+                resetTimeCol = `<span class="list-text-secondary">${item.resetTimeDisplay || '-'}</span>`;
+            }
+
+            // 5. Actions
+            let actionsCol = '';
+            const pinHintText = i18n['dashboard.pinHint'] || 'Pin to Status Bar';
+            const renameHintText = i18n['model.rename'] || 'Rename';
+            if (!isChild) { // Child models in a group usually don't need actions if the group controls them, but rename is useful
+                actionsCol = `
+                    <div class="list-actions-cell">
+                        <button class="rename-btn icon-btn" data-tooltip-html="${encodeURIComponent('<div class=\"rich-tooltip-item\"><span class=\"text\">' + renameHintText + '</span></div>')}">✏️</button>
+                        <label class="switch" style="transform: scale(0.8);" data-tooltip-html="${encodeURIComponent('<div class=\"rich-tooltip-item\"><span class=\"text\">' + pinHintText + '</span></div>')}">
+                            <input type="checkbox" class="pin-toggle" ${isPinned ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `;
+            } else {
+                 // For child models, maybe just rename logic, no pinning (pinned via group)
+                 // But wait, can you pin a specific model from a group? Usually grouping implies moving to group logic.
+                 // Let's keep rename only for children to match requirement "parent... operation and display logic same as card".
+                 // In card mode, children are just text. But rename is useful.
+                 actionsCol = `
+                    <div class="list-actions-cell">
+                         <!-- Optionally allow renaming child models -->
+                         <!-- <button class="rename-ptr icon-btn">✏️</button> -->
+                    </div>
+                 `;
+            }
+
+            if (config?.groupingEnabled) {
+                tr.innerHTML = `
+                    <td>${nameCol}</td>
+                    <td>${modelsCol}</td>
+                    <td class="col-status-bar">${statusCol}</td>
+                    <td class="col-reset-in">${resetInCol}</td>
+                    <td class="col-reset-time">${resetTimeCol}</td>
+                    <td>${actionsCol}</td>
+                `;
+            } else {
+                 tr.innerHTML = `
+                    <td>${nameCol}</td>
+                    <td class="col-status-bar">${statusCol}</td>
+                    <td class="col-reset-in">${resetInCol}</td>
+                    <td class="col-reset-time">${resetTimeCol}</td>
+                    <td>${actionsCol}</td>
+                `;
+            }
+
+            // Bind Events
+            if (!isChild) {
+                // Rename
+                const renameBtn = tr.querySelector('.rename-btn');
+                if (renameBtn) {
+                    renameBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (isGroup) {
+                            // Extract model IDs for group rename logic if needed, but passing groupId is enough for openRenameModal usually
+                            // Actually dashboard.js `openRenameModal` takes (groupId, currentName, modelIds)
+                            const ids = item.models ? item.models.map(m => m.modelId) : [];
+                            openRenameModal(item.groupId, name, ids);
+                        } else {
+                            openModelRenameModal(item.modelId, name, item.label);
+                        }
+                    });
+                }
+
+                // Pin
+                const pinToggle = tr.querySelector('.pin-toggle');
+                if (pinToggle) {
+                    pinToggle.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        if (isGroup) {
+                             // Assuming togglePin supports group logic or we have a command for it
+                             // Check extension.ts or handle message. 
+                             // Wait, dashboard.js togglePin only takes modelId.
+                             // We need to send a specific group command or updated togglePin.
+                             // Based on config 'pinnedGroups', there must be a way. 
+                             // Let's assume 'toggleGroupPin' exists or create it.
+                             vscode.postMessage({ command: 'toggleGroupPin', groupId: item.groupId });
+                        } else {
+                            togglePin(item.modelId);
+                        }
+                    });
+                }
+            }
+
+            return tr;
+        };
+
+
+        // Logic for Grouping vs Flat
+        if (config?.groupingEnabled) {
+            // Render Auto-Group Toolbar
+            const bar = document.createElement('div');
+            bar.className = 'auto-group-toolbar';
+            bar.style.marginBottom = '10px';
+            bar.innerHTML = `
+                <span class="grouping-hint">
+                    ${i18n['grouping.description'] || 'This mode aggregates models sharing the same quota.'}
+                </span>
+                <button id="list-auto-group-btn" class="auto-group-link" title="${i18n['grouping.autoGroupHint']}">
+                    <span class="icon">🔄</span>
+                    ${i18n['grouping.autoGroup'] || 'Auto Group'}
+                </button>
+            `;
+            container.appendChild(bar);
+            
+            const btn = bar.querySelector('#list-auto-group-btn');
+            if (btn) btn.addEventListener('click', handleAutoGroup);
+        }
+
+        if (config?.groupingEnabled && snapshot.groups && snapshot.groups.length > 0) {
+            // === Grouped View ===
+            
+            // Sort Groups
+            let groups = [...snapshot.groups];
+            if (config?.groupOrder?.length > 0) {
+                const orderMap = new Map();
+                config.groupOrder.forEach((id, index) => orderMap.set(id, index));
+                groups.sort((a, b) => {
+                    const idxA = orderMap.has(a.groupId) ? orderMap.get(a.groupId) : 99999;
+                    const idxB = orderMap.has(b.groupId) ? orderMap.get(b.groupId) : 99999;
+                    if (idxA !== idxB) return idxA - idxB;
+                    // Lower percentage first
+                    return a.remainingPercentage - b.remainingPercentage;
+                });
+            }
+
+            groups.forEach(group => {
+                // 1. Render Group Parent Row (Now includes children inline)
+                tbody.appendChild(renderRowContent(group, true, false));
+                // No longer render individual child rows based on user request ("ugly")
+            });
+
+        } else {
+            // === Flat View ===
+            
+            let models = [...snapshot.models];
+            if (config?.modelOrder?.length > 0) {
+                const orderMap = new Map();
+                config.modelOrder.forEach((id, index) => orderMap.set(id, index));
+                models.sort((a, b) => {
+                    const idxA = orderMap.has(a.modelId) ? orderMap.get(a.modelId) : 99999;
+                    const idxB = orderMap.has(b.modelId) ? orderMap.get(b.modelId) : 99999;
+                    return idxA - idxB;
+                });
+            }
+
+            models.forEach(model => {
+                tbody.appendChild(renderRowContent(model, false, false));
+            });
+        }
+
+        container.appendChild(table);
+        dashboard.appendChild(container);
+    }
+
 
     window.retryConnection = retryConnection;
     window.openLogs = openLogs;
@@ -578,9 +958,13 @@
         }
 
         if (dragSrcEl !== this) {
-            const cards = Array.from(dashboard.querySelectorAll('.card'));
-            const srcIndex = cards.indexOf(dragSrcEl);
-            const targetIndex = cards.indexOf(this);
+            // Get siblings of the same group (cards in dashboard or rows in tbody)
+            const selector = dragSrcEl.classList.contains('card') ? '.card' : 'tr';
+            const dashboardOrTbody = dragSrcEl.parentElement;
+            const items = Array.from(dashboardOrTbody.querySelectorAll(selector));
+            
+            const srcIndex = items.indexOf(dragSrcEl);
+            const targetIndex = items.indexOf(this);
 
             if (srcIndex < targetIndex) {
                 this.after(dragSrcEl);
@@ -588,21 +972,21 @@
                 this.before(dragSrcEl);
             }
 
-            // 保存新顺序
-            const allCards = Array.from(dashboard.querySelectorAll('.card'));
+            // Get updated list of all items in this container
+            const updatedItems = Array.from(dashboardOrTbody.querySelectorAll(selector));
             
-            // 检查是否是分组卡片
-            if (dragSrcEl.classList.contains('group-card')) {
-                const groupOrder = allCards
-                    .filter(card => card.classList.contains('group-card') && card.hasAttribute('data-group-id'))
-                    .map(card => card.getAttribute('data-group-id'))
+            // 检查是否是分组
+            const isGroup = dragSrcEl.classList.contains('group-card') || dragSrcEl.classList.contains('list-group-row');
+            
+            if (isGroup) {
+                const groupOrder = updatedItems
+                    .map(item => item.getAttribute('data-group-id'))
                     .filter(id => id !== null);
                 
                 vscode.postMessage({ command: 'updateGroupOrder', order: groupOrder });
             } else {
-                const modelOrder = allCards
-                    .filter(card => !card.classList.contains('group-card') && card.hasAttribute('data-id'))
-                    .map(card => card.getAttribute('data-id'))
+                const modelOrder = updatedItems
+                    .map(item => item.getAttribute('data-id'))
                     .filter(id => id !== null);
                 
                 vscode.postMessage({ command: 'updateOrder', order: modelOrder });
@@ -616,7 +1000,7 @@
         this.style.opacity = '1';
         this.classList.remove('dragging');
 
-        document.querySelectorAll('.card').forEach(item => {
+        document.querySelectorAll('.card, tr').forEach(item => {
             item.classList.remove('over');
         });
     }
@@ -634,9 +1018,17 @@
         }
 
         // Render User Profile (if available) - New Section
-        if (snapshot.userInfo) {
+        // Check isProfileHidden state before rendering
+        if (snapshot.userInfo && !isProfileHidden) {
             renderUserProfile(snapshot.userInfo);
         }
+
+        // ============ LIST VIEW RENDER BRANCH ============
+        if (currentViewMode === 'list') {
+             renderListView(snapshot, config);
+             return;
+        }
+        // =================================================
         
         // 更新分组按钮状态
         updateToggleGroupingButton(config?.groupingEnabled);
@@ -1016,8 +1408,8 @@
                 <span class="group-icon">📦</span>
                 <span class="label group-name">${group.groupName}</span>
                 <div class="actions">
-                    <button class="rename-group-btn icon-btn" data-group-id="${group.groupId}" title="${i18n['grouping.rename'] || 'Rename'}">✏️</button>
-                    <label class="switch" data-tooltip="${i18n['dashboard.pinHint'] || 'Pin to Status Bar'}">
+                    <button class="rename-group-btn icon-btn" data-group-id="${group.groupId}" data-tooltip-html="${encodeURIComponent('<div class="rich-tooltip-item"><span class="text">' + (i18n['grouping.rename'] || 'Rename') + '</span></div>')}">✏️</button>
+                    <label class="switch" data-tooltip-html="${encodeURIComponent('<div class="rich-tooltip-item"><span class="text">' + (i18n['dashboard.pinHint'] || 'Pin to Status Bar') + '</span></div>')}">
                         <input type="checkbox" class="group-pin-toggle" data-group-id="${group.groupId}" ${isPinned ? 'checked' : ''}>
                         <span class="slider"></span>
                     </label>
@@ -1123,8 +1515,8 @@
                     ${capsIconHtml}
                 </div>
                 <div class="actions">
-                    <button class="rename-model-btn icon-btn" data-model-id="${model.modelId}" title="${i18n['model.rename'] || 'Rename Model'}">✏️</button>
-                    <label class="switch" data-tooltip="${i18n['dashboard.pinHint'] || 'Pin to Status Bar'}">
+                    <button class="rename-model-btn icon-btn" data-model-id="${model.modelId}" data-tooltip-html="${encodeURIComponent('<div class="rich-tooltip-item"><span class="text">' + (i18n['model.rename'] || 'Rename') + '</span></div>')}">✏️</button>
+                    <label class="switch" data-tooltip-html="${encodeURIComponent('<div class="rich-tooltip-item"><span class="text">' + (i18n['dashboard.pinHint'] || 'Pin to Status Bar') + '</span></div>')}">
                         <input type="checkbox" class="pin-toggle" data-model-id="${model.modelId}" ${isPinned ? 'checked' : ''}>
                         <span class="slider"></span>
                     </label>

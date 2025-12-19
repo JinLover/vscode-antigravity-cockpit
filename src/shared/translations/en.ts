@@ -27,6 +27,9 @@ export const en = {
     'dashboard.resetIn': 'Reset In',
     'dashboard.resetTime': 'Reset Time',
     'dashboard.status': 'Status',
+    'dashboard.modelName': 'Model Name',
+    'dashboard.name': 'Name',
+    'dashboard.remainingQuota': 'Remaining Quota',
     'dashboard.exhausted': 'Exhausted',
     'dashboard.active': 'Healthy',
     'dashboard.warning': 'Warning',
@@ -99,7 +102,8 @@ export const en = {
     'grouping.disable': 'Disable Grouping',
     'grouping.rename': 'Rename Group',
     'grouping.renamePrompt': 'Enter new name for this group:',
-    'grouping.models': 'Models',
+    'grouping.nameLabel': 'Group Name',
+    'grouping.models': 'Included Models',
     'grouping.showInStatusBar': 'Show Groups in Status Bar',
     'grouping.toggleHint': 'Toggle group view',
     'grouping.autoGroup': 'Auto Group',
@@ -184,4 +188,12 @@ export const en = {
     'capability.media': 'Media: Supports audio and video inputs',
     'capability.tools': 'Tools',
     'capability.recommended': 'Recommended Model',
+
+    // View Mode
+    'viewMode.title': 'View Mode',
+    'viewMode.card': 'Card View',
+    'viewMode.list': 'List View',
+    'displayMode.title': 'Display Mode',
+    'displayMode.webview': 'Dashboard (Webview)',
+    'displayMode.quickpick': 'QuickPick Mode',
 };

@@ -184,4 +184,16 @@ export const ko = {
     'capability.media': '미디어: 오디오 및 비디오 지원',
     'capability.tools': '도구',
     'capability.recommended': '추천 모델',
+
+    // View Mode
+    'dashboard.modelName': '모델 이름',
+    'dashboard.name': '이름',
+    'dashboard.remainingQuota': '잔여 할당량',
+    'grouping.nameLabel': '그룹 이름',
+    'viewMode.title': '보기 모드',
+    'viewMode.card': '카드 보기',
+    'viewMode.list': '목록 보기',
+    'displayMode.title': '표시 모드',
+    'displayMode.webview': '대시보드 (Webview)',
+    'displayMode.quickpick': 'QuickPick 모드',
 };

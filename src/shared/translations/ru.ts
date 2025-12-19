@@ -184,4 +184,16 @@ export const ru = {
     'capability.media': 'Медиа: Поддержка аудио и видео',
     'capability.tools': 'Инструменты',
     'capability.recommended': 'Рекомендуемая модель',
+
+    // View Mode
+    'dashboard.modelName': 'Название модели',
+    'dashboard.name': 'Название',
+    'dashboard.remainingQuota': 'Остаток квоты',
+    'grouping.nameLabel': 'Название группы',
+    'viewMode.title': 'Режим просмотра',
+    'viewMode.card': 'Карточки',
+    'viewMode.list': 'Список',
+    'displayMode.title': 'Режим отображения',
+    'displayMode.webview': 'Панель (Webview)',
+    'displayMode.quickpick': 'Режим QuickPick',
 };

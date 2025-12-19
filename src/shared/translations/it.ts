@@ -184,4 +184,16 @@ export const it = {
     'capability.media': 'Media: Supporta audio e video',
     'capability.tools': 'Strumenti',
     'capability.recommended': 'Modello Consigliato',
+
+    // View Mode
+    'dashboard.modelName': 'Nome Modello',
+    'dashboard.name': 'Nome',
+    'dashboard.remainingQuota': 'Quota Rimanente',
+    'grouping.nameLabel': 'Nome Gruppo',
+    'viewMode.title': 'Modalità Vista',
+    'viewMode.card': 'Vista Schede',
+    'viewMode.list': 'Vista Elenco',
+    'displayMode.title': 'Modalità Visualizzazione',
+    'displayMode.webview': 'Dashboard (Webview)',
+    'displayMode.quickpick': 'Modalità QuickPick',
 };

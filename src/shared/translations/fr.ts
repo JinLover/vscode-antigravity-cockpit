@@ -184,4 +184,16 @@ export const fr = {
     'capability.media': 'Médias: Prend en charge audio et vidéo',
     'capability.tools': 'Outils',
     'capability.recommended': 'Modèle Recommandé',
+
+    // View Mode
+    'dashboard.modelName': 'Nom du Modèle',
+    'dashboard.name': 'Nom',
+    'dashboard.remainingQuota': 'Quota Restant',
+    'grouping.nameLabel': 'Nom du Groupe',
+    'viewMode.title': 'Mode d\'Affichage',
+    'viewMode.card': 'Vue Cartes',
+    'viewMode.list': 'Vue Liste',
+    'displayMode.title': 'Mode d\'Affichage',
+    'displayMode.webview': 'Tableau de Bord (Webview)',
+    'displayMode.quickpick': 'Mode QuickPick',
 };

@@ -440,6 +440,50 @@ function setupMessageHandling(): void {
                     logger.warn('updateStatusBarFormat signal missing statusBarFormat');
                 }
                 break;
+
+            case 'toggleProfile':
+                // 切换计划详情显示/隐藏
+                logger.info('User toggled profile visibility');
+                {
+                    const currentConfig = configService.getConfig();
+                    await configService.updateConfig('profileHidden', !currentConfig.profileHidden);
+                    reactor.reprocess();
+                }
+                break;
+
+            case 'updateViewMode':
+                // 更新视图模式
+                if (message.viewMode) {
+                    logger.info(`User changed view mode to: ${message.viewMode}`);
+                    await configService.updateConfig('viewMode', message.viewMode);
+                    reactor.reprocess();
+                } else {
+                    logger.warn('updateViewMode signal missing viewMode');
+                }
+                break;
+
+            case 'updateDisplayMode':
+                if (message.displayMode) {
+                    logger.info(`User changed display mode to: ${message.displayMode}`);
+                    await configService.updateConfig('displayMode', message.displayMode);
+                    
+                    if (message.displayMode === 'quickpick') {
+                        // 1. 关闭 Webview
+                        hud.dispose();
+                        // 2. 自动关闭分组模式 (QuickPick 不支持分组)
+                        await configService.updateConfig('groupingEnabled', false);
+                        // 3. 刷新状态栏
+                        reactor.reprocess();
+                        // 4. 立即弹出 QuickPick
+                        vscode.commands.executeCommand('agCockpit.open');
+                    } else {
+                        // 从 QuickPick 切换回 Webview 在 quickpick_view.ts 中处理或这里处理
+                        // 如果在这里处理，也可以：
+                        // await configService.updateConfig('groupingEnabled', true);
+                        reactor.reprocess();
+                    }
+                }
+                break;
         }
     });
 }
@@ -501,6 +545,9 @@ function setupTelemetryHandling(): void {
             criticalThreshold: config.criticalThreshold,
             lastSuccessfulUpdate: lastSuccessfulUpdate,
             statusBarFormat: config.statusBarFormat,
+            profileHidden: config.profileHidden,
+            viewMode: config.viewMode,
+            displayMode: config.displayMode,
         });
 
         // 更新 QuickPick 视图数据

@@ -297,7 +297,10 @@ export type WebviewMessageType =
     | 'updateNotificationEnabled'
     | 'updateThresholds'
     | 'renameModel'
-    | 'updateStatusBarFormat';
+    | 'updateStatusBarFormat'
+    | 'toggleProfile'
+    | 'updateViewMode'
+    | 'updateDisplayMode';
 
 /** Webview 消息 */
 export interface WebviewMessage {
@@ -320,6 +323,10 @@ export interface WebviewMessage {
     criticalThreshold?: number;
     /** 状态栏显示格式 (updateStatusBarFormat) */
     statusBarFormat?: string;
+    /** 视图模式 (updateViewMode) */
+    viewMode?: string;
+    /** 显示模式 (updateDisplayMode) */
+    displayMode?: 'webview' | 'quickpick';
 }
 
 /** Dashboard 配置 */
@@ -354,6 +361,12 @@ export interface DashboardConfig {
     lastSuccessfulUpdate?: Date | null;
     /** 状态栏显示格式 */
     statusBarFormat?: string;
+    /** 是否隐藏计划详情面板 */
+    profileHidden?: boolean;
+    /** 视图模式 (card | list) */
+    viewMode?: string;
+    /** 显示模式 (webview | quickpick) */
+    displayMode?: string;
 }
 
 /** 状态栏更新数据 */

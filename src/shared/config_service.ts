@@ -43,6 +43,10 @@ export interface CockpitConfig {
     criticalThreshold: number;
     /** 显示模式 */
     displayMode: string;
+    /** 是否隐藏计划详情面板 */
+    profileHidden: boolean;
+    /** 视图模式 (card | list) */
+    viewMode: string;
 }
 
 /** 配置服务类 */
@@ -84,6 +88,8 @@ class ConfigService {
             warningThreshold: config.get<number>(CONFIG_KEYS.WARNING_THRESHOLD, QUOTA_THRESHOLDS.WARNING_DEFAULT),
             criticalThreshold: config.get<number>(CONFIG_KEYS.CRITICAL_THRESHOLD, QUOTA_THRESHOLDS.CRITICAL_DEFAULT),
             displayMode: config.get<string>(CONFIG_KEYS.DISPLAY_MODE, DISPLAY_MODE.WEBVIEW),
+            profileHidden: config.get<boolean>(CONFIG_KEYS.PROFILE_HIDDEN, false),
+            viewMode: config.get<string>(CONFIG_KEYS.VIEW_MODE, 'card'),
         };
     }
 

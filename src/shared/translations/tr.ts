@@ -184,4 +184,16 @@ export const tr = {
     'capability.media': 'Medya: Ses ve video girişlerini destekler',
     'capability.tools': 'Araçlar',
     'capability.recommended': 'Önerilen Model',
+
+    // View Mode
+    'dashboard.modelName': 'Model Adı',
+    'dashboard.name': 'Ad',
+    'dashboard.remainingQuota': 'Kalan Kota',
+    'grouping.nameLabel': 'Grup Adı',
+    'viewMode.title': 'Görünüm Modu',
+    'viewMode.card': 'Kart Görünümü',
+    'viewMode.list': 'Liste Görünümü',
+    'displayMode.title': 'Görüntüleme Modu',
+    'displayMode.webview': 'Gösterge Paneli (Webview)',
+    'displayMode.quickpick': 'QuickPick Modu',
 };

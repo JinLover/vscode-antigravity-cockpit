@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.17] - 2025-12-19
+
+### Added
+- **List View Mode**: New table-style view for quota display
+  - Toggle via Settings → View Mode (Card/List)
+
+---
+
 ## [1.5.16] - 2025-12-19
 
 ### Added

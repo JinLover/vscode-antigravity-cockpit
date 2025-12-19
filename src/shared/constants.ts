@@ -71,6 +71,8 @@ export const CONFIG_KEYS = {
     WARNING_THRESHOLD: 'warningThreshold',
     CRITICAL_THRESHOLD: 'criticalThreshold',
     DISPLAY_MODE: 'displayMode',
+    PROFILE_HIDDEN: 'profileHidden',
+    VIEW_MODE: 'viewMode',
 } as const;
 
 /** 状态栏显示格式 */

@@ -3,7 +3,7 @@
   "displayName": "Antigravity Cockpit",
   "icon": "assets/icon.png",
   "description": "A premium, dashboard-style quota monitor for Antigravity AI.",
-  "version": "1.5.16",
+  "version": "1.5.17",
   "publisher": "jlcodes",
   "engines": {
     "vscode": "^1.90.0"
@@ -219,6 +219,24 @@
             "Lightweight QuickPick menu (better compatibility)"
           ],
           "description": "Display mode for quota information. Use 'quickpick' if Webview doesn't work on your system."
+        },
+        "agCockpit.profileHidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide the Plan Details panel in the dashboard."
+        },
+        "agCockpit.viewMode": {
+          "type": "string",
+          "default": "card",
+          "enum": [
+            "card",
+            "list"
+          ],
+          "enumDescriptions": [
+            "Card View (default)",
+            "List View"
+          ],
+          "description": "View mode for displaying quota data in the dashboard."
         }
       }
     },

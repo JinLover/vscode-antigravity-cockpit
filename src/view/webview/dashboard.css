@@ -933,12 +933,12 @@ input:checked + .slider:before {
     border: 1px solid var(--border-color);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     border-radius: 8px;
-    padding: 8px 12px;
-    min-width: 200px;
+    padding: 6px 10px;
     pointer-events: none;
     opacity: 1;
     transition: opacity 0.15s ease-out;
     backdrop-filter: blur(8px);
+    white-space: nowrap;
 }
 
 .rich-tooltip.hidden {

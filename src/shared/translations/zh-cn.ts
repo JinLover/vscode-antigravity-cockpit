@@ -27,6 +27,9 @@ export const zhCN = {
     'dashboard.resetIn': '重置倒计时',
     'dashboard.resetTime': '重置时间',
     'dashboard.status': '状态',
+    'dashboard.modelName': '模型名称',
+    'dashboard.name': '名称',
+    'dashboard.remainingQuota': '剩余配额',
     'dashboard.exhausted': '已耗尽',
     'dashboard.active': '健康',
     'dashboard.warning': '警告',
@@ -99,6 +102,7 @@ export const zhCN = {
     'grouping.disable': '关闭分组',
     'grouping.rename': '重命名分组',
     'grouping.renamePrompt': '请输入新的分组名称:',
+    'grouping.nameLabel': '分组名称',
     'grouping.models': '包含模型',
     'grouping.showInStatusBar': '在状态栏显示分组',
     'grouping.toggleHint': '切换分组视图',
@@ -184,4 +188,12 @@ export const zhCN = {
     'capability.media': '多媒体：支持音视频输入',
     'capability.tools': '工具',
     'capability.recommended': '推荐模型：性能与价格的最佳平衡',
+
+    // View Mode
+    'viewMode.title': '视图模式',
+    'viewMode.card': '卡片视图',
+    'viewMode.list': '列表视图',
+    'displayMode.title': '显示模式',
+    'displayMode.webview': '仪表盘 (Webview)',
+    'displayMode.quickpick': '快捷模式 (QuickPick)',
 };

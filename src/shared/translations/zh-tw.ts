@@ -184,4 +184,16 @@ export const zhTW = {
     'capability.media': '多媒體：支援音視訊輸入',
     'capability.tools': '工具',
     'capability.recommended': '推薦模型：效能與價格的最佳平衡',
+
+    // View Mode
+    'dashboard.modelName': '模型名稱',
+    'dashboard.name': '名稱',
+    'dashboard.remainingQuota': '剩餘配額',
+    'grouping.nameLabel': '分組名稱',
+    'viewMode.title': '檢視模式',
+    'viewMode.card': '卡片檢視',
+    'viewMode.list': '列表檢視',
+    'displayMode.title': '顯示模式',
+    'displayMode.webview': '儀表板 (Webview)',
+    'displayMode.quickpick': '快捷模式 (QuickPick)',
 };
