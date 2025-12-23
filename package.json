@@ -3,7 +3,7 @@
   "displayName": "Antigravity Cockpit",
   "icon": "assets/icon.png",
   "description": "A premium, dashboard-style quota monitor for Antigravity AI.",
-  "version": "1.5.32",
+  "version": "1.5.33",
   "publisher": "jlcodes",
   "engines": {
     "vscode": "^1.90.0"
@@ -237,6 +237,11 @@
             "List View"
           ],
           "description": "View mode for displaying quota data in the dashboard."
+        },
+        "agCockpit.dataMasked": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mask sensitive data (email, etc.) in the Plan Details panel."
         }
       }
     },
