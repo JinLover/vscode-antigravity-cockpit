@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.31] - 2025-12-23
+
+### Fixed
+- **Memory Leak**: Fixed event listener leak in Logger service - now properly disposes configuration change listener.
+- **Duplicate Notifications**: Removed duplicate quota notification logic in ReactorCore - notifications are now handled exclusively by TelemetryController.
+
+### Improved
+- **Code Cleanup**: Removed unused variables and imports across multiple files.
+
 ## [1.5.30] - 2025-12-23
 
 ### Added

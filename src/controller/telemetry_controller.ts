@@ -13,10 +13,6 @@ import { QUOTA_THRESHOLDS } from '../shared/constants';
 export class TelemetryController {
     private notifiedModels: Set<string> = new Set();
     private lastSuccessfulUpdate: Date | null = null;
-    // 自动重试计数器
-    private autoRetryCount = 0;
-    private readonly MAX_AUTO_RETRY = 3;
-    private readonly AUTO_RETRY_DELAY_MS = 5000;
 
     constructor(
         private reactor: ReactorCore,

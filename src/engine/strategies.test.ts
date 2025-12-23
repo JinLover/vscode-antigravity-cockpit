@@ -5,6 +5,7 @@ describe('Process Detection Strategies', () => {
         const strategy = new WindowsStrategy();
         
         // Access private method for testing
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const isAntigravityProcess = (strategy as any).isAntigravityProcess.bind(strategy);
 
         it('should identify a valid Antigravity process', () => {
@@ -32,6 +33,7 @@ describe('Process Detection Strategies', () => {
         const strategy = new UnixStrategy('darwin');
         
         // Access private method for testing
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const isAntigravityProcess = (strategy as any).isAntigravityProcess.bind(strategy);
 
         it('should identify a valid Antigravity process on Unix', () => {

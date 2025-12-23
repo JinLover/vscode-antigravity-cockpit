@@ -4,7 +4,6 @@
  */
 
 import * as https from 'https';
-import * as vscode from 'vscode';
 import { 
     QuotaSnapshot, 
     ModelQuotaInfo, 
@@ -31,10 +30,6 @@ export class ReactorCore {
     private pulseTimer?: ReturnType<typeof setInterval>;
     public currentInterval: number = 0;
     
-    /** 已通知过配额耗尽的模型 */
-    private exhaustedNotifiedModels: Set<string> = new Set();
-    /** 已通知过低配额警告的模型 */
-    private warningNotifiedModels: Set<string> = new Set();
     /** 上一次的配额快照缓存 */
     private lastSnapshot?: QuotaSnapshot;
     /** 上一次的原始 API 响应缓存（用于 reprocess 时重新生成分组） */
@@ -236,9 +231,6 @@ export class ReactorCore {
         
         logger.info(`Quota Update:\n${quotaSummary}`);
 
-        // 检查并发送配额通知
-        this.checkAndNotify(telemetry);
-
         if (this.updateHandler) {
             this.updateHandler(telemetry);
         }
@@ -269,50 +261,6 @@ export class ReactorCore {
      */
     get hasCache(): boolean {
         return !!this.lastSnapshot;
-    }
-
-    /**
-     * 检查配额并发送通知
-     */
-    private checkAndNotify(snapshot: QuotaSnapshot): void {
-        const config = configService.getConfig();
-        if (!config.notificationEnabled) {
-            return;
-        }
-
-        for (const model of snapshot.models) {
-            const percentage = model.remainingPercentage ?? 100;
-
-            // 配额耗尽通知
-            if (model.isExhausted && !this.exhaustedNotifiedModels.has(model.modelId)) {
-                this.exhaustedNotifiedModels.add(model.modelId);
-                vscode.window.showWarningMessage(
-                    t('notify.exhausted', { 
-                        model: model.label, 
-                        time: model.timeUntilResetFormatted, 
-                    }),
-                );
-            }
-
-            // 低配额警告（仅警告一次）- 使用配置的阈值
-            const warningThreshold = config.warningThreshold;
-            if (percentage > 0 && percentage <= warningThreshold && 
-                !this.warningNotifiedModels.has(model.modelId)) {
-                this.warningNotifiedModels.add(model.modelId);
-                vscode.window.showInformationMessage(
-                    t('notify.warning', { 
-                        model: model.label, 
-                        percent: percentage.toFixed(0), 
-                    }),
-                );
-            }
-
-            // 配额恢复后重置通知状态
-            if (percentage > warningThreshold) {
-                this.exhaustedNotifiedModels.delete(model.modelId);
-                this.warningNotifiedModels.delete(model.modelId);
-            }
-        }
     }
 
     /**

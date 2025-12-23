@@ -27,6 +27,7 @@ class Logger {
     private outputChannel: vscode.OutputChannel | null = null;
     private logLevel: LogLevel = LogLevel.INFO;
     private isInitialized = false;
+    private configDisposable?: vscode.Disposable;
 
     /**
      * 初始化日志频道
@@ -39,8 +40,8 @@ class Logger {
         this.outputChannel = vscode.window.createOutputChannel('Antigravity Cockpit');
         this.isInitialized = true;
 
-        // 监听配置变化
-        vscode.workspace.onDidChangeConfiguration((e) => {
+        // 监听配置变化（保存 Disposable 以便清理）
+        this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
             if (e.affectsConfiguration('agCockpit.logLevel')) {
                 this.updateLogLevel();
             }
@@ -192,6 +193,8 @@ class Logger {
      * 销毁日志频道
      */
     dispose(): void {
+        this.configDisposable?.dispose();
+        this.configDisposable = undefined;
         this.outputChannel?.dispose();
         this.outputChannel = null;
         this.isInitialized = false;
