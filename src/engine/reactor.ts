@@ -20,6 +20,14 @@ import { TIMING, API_ENDPOINTS } from '../shared/constants';
 import { captureError } from '../shared/error_reporter';
 
 /**
+ * 判断是否是服务端返回的错误（不属于插件 Bug，不需要上报）
+ */
+function isServerError(err: Error): boolean {
+    const msg = err.message.toLowerCase();
+    return msg.includes('antigravity') && (msg.includes('错误') || msg.includes('error'));
+}
+
+/**
  * 反应堆核心类
  * 管理与后端 API 的通信
  */
@@ -183,18 +191,22 @@ export class ReactorCore {
             
             // 超过最大重试次数，触发错误回调
             logger.error(`Init sync failed after ${maxRetries} retries: ${err.message}`);
-            captureError(err, {
-                phase: 'initSync',
-                retryCount: currentRetry,
-                maxRetries,
-                endpoint: API_ENDPOINTS.GET_USER_STATUS,
-                host: '127.0.0.1',
-                port: this.port,
-                timeout_ms: TIMING.HTTP_TIMEOUT_MS,
-                interval_ms: this.currentInterval,
-                has_token: Boolean(this.token),
-                scan: this.lastScanDiagnostics,
-            });
+            
+            // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
+            if (!isServerError(err)) {
+                captureError(err, {
+                    phase: 'initSync',
+                    retryCount: currentRetry,
+                    maxRetries,
+                    endpoint: API_ENDPOINTS.GET_USER_STATUS,
+                    host: '127.0.0.1',
+                    port: this.port,
+                    timeout_ms: TIMING.HTTP_TIMEOUT_MS,
+                    interval_ms: this.currentInterval,
+                    has_token: Boolean(this.token),
+                    scan: this.lastScanDiagnostics,
+                });
+            }
             if (this.errorHandler) {
                 this.errorHandler(err);
             }
@@ -229,7 +241,8 @@ export class ReactorCore {
             logger.error(`Telemetry Sync Failed: ${err.message}`);
             
             // 只有在从未成功获取过配额时才上报，成功后的定时同步失败不上报
-            if (!this.hasSuccessfulSync) {
+            // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
+            if (!this.hasSuccessfulSync && !isServerError(err)) {
                 captureError(err, {
                     phase: 'telemetrySync',
                     endpoint: API_ENDPOINTS.GET_USER_STATUS,

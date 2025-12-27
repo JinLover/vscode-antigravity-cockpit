@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.42]
+
+### Improved
+- **Error Reporting**: Server-side errors (e.g., "not logged in") are no longer reported to Sentry
+
 ## [1.5.41]
 
 ### Improved
