@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.44]
+
+### Fixed
+- **Startup Protection**: Prevent API requests before system is fully engaged (port 0), avoiding erroneous "Connection Refused (443)" errors
+
 ## [1.5.43]
 
 ### Fixed

@@ -74,6 +74,12 @@ export class ReactorCore {
      */
     private async transmit<T>(endpoint: string, payload: object): Promise<T> {
         return new Promise((resolve, reject) => {
+            // Guard against unengaged reactor
+            if (!this.port) {
+                reject(new Error('Antigravity Error: System not ready (Reactor not engaged)'));
+                return;
+            }
+
             const data = JSON.stringify(payload);
             const opts: https.RequestOptions = {
                 hostname: '127.0.0.1',
