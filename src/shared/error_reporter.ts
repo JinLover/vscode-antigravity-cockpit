@@ -142,7 +142,7 @@ function classifyError(error: Error): ErrorCategory {
 /**
  * 获取代理配置状态
  */
-function getProxyStatus(): { configured: boolean; type: string } {
+export function getProxyStatus(): { configured: boolean; type: string } {
     try {
         const httpConfig = vscode.workspace.getConfiguration('http');
         const proxy = httpConfig.get<string>('proxy', '');

@@ -362,6 +362,7 @@ export class ProcessHunter {
                 },
                 rejectUnauthorized: false,
                 timeout: TIMING.PROCESS_CMD_TIMEOUT_MS,
+                agent: false, // 绕过代理，直接连接 localhost
             };
 
             const req = https.request(options, res => resolve(res.statusCode === 200));

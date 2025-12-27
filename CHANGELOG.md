@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.43]
+
+### Fixed
+- **Proxy Bypass**: Forced bypass of HTTP proxy for localhost connections to resolve timeouts when users have global proxy settings enabled
+
 ## [1.5.42]
 
 ### Improved

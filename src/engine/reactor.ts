@@ -88,6 +88,7 @@ export class ReactorCore {
                 },
                 rejectUnauthorized: false,
                 timeout: TIMING.HTTP_TIMEOUT_MS,
+                agent: false, // 绕过代理，直接连接 localhost
             };
 
             logger.info(`Transmitting signal to ${endpoint}`, JSON.parse(data));
