@@ -18,14 +18,9 @@ import { configService } from '../shared/config_service';
 import { t } from '../shared/i18n';
 import { TIMING, API_ENDPOINTS } from '../shared/constants';
 import { captureError } from '../shared/error_reporter';
+import { AntigravityError, isServerError } from '../shared/errors';
 
-/**
- * 判断是否是服务端返回的错误（不属于插件 Bug，不需要上报）
- */
-function isServerError(err: Error): boolean {
-    const msg = err.message.toLowerCase();
-    return msg.includes('antigravity') && (msg.includes('错误') || msg.includes('error'));
-}
+
 
 /**
  * 反应堆核心类
@@ -76,7 +71,7 @@ export class ReactorCore {
         return new Promise((resolve, reject) => {
             // Guard against unengaged reactor
             if (!this.port) {
-                reject(new Error('Antigravity Error: System not ready (Reactor not engaged)'));
+                reject(new AntigravityError('Antigravity Error: System not ready (Reactor not engaged)'));
                 return;
             }
 
@@ -133,7 +128,7 @@ export class ReactorCore {
             req.on('error', (e) => reject(new Error(`Connection Failed: ${e.message}`)));
             req.on('timeout', () => {
                 req.destroy();
-                reject(new Error('Signal Lost: Request timed out'));
+                reject(new AntigravityError('Signal Lost: Request timed out'));
             });
 
             req.write(data);
@@ -338,7 +333,7 @@ export class ReactorCore {
         if (!data || !data.userStatus) {
             // 如果服务端返回了错误消息，直接透传给用户，这不属于插件 Bug
             if (data && typeof data.message === 'string') {
-                throw new Error(t('error.serverError', { message: data.message }));
+                throw new AntigravityError(t('error.serverError', { message: data.message }));
             }
 
             throw new Error(t('error.invalidResponse', { 

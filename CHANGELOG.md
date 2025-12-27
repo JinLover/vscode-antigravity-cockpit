@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.45]
+
+### Refactor
+- **Error Handling**: Introduced `AntigravityError` class to uniformly manage and filter expected errors (timeouts, server messages, startup checks) from Sentry reporting
+
 ## [1.5.44]
 
 ### Fixed
