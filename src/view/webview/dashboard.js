@@ -889,23 +889,23 @@
 
         // Logic for Grouping vs Flat
         if (config?.groupingEnabled) {
-            // Render Auto-Group Toolbar
+            // Render Auto-Group Toolbar (Using same logic as Card View for consistency)
             const bar = document.createElement('div');
             bar.className = 'auto-group-toolbar';
             bar.style.marginBottom = '10px';
             bar.innerHTML = `
                 <span class="grouping-hint">
-                    ${i18n['grouping.description'] || 'This mode aggregates models sharing the same quota.'}
+                    ${i18n['grouping.description'] || 'This mode aggregates models sharing the same quota. Supports renaming, sorting, and status bar sync. Click "Manage Groups" to customize, or toggle "Quota Groups" above to switch back.'}
                 </span>
-                <button id="list-auto-group-btn" class="auto-group-link" title="${i18n['grouping.autoGroupHint']}">
-                    <span class="icon">🔄</span>
-                    ${i18n['grouping.autoGroup'] || 'Auto Group'}
+                <button id="list-manage-group-btn" class="auto-group-link" title="${i18n['customGrouping.title'] || 'Manage Groups'}">
+                    <span class="icon">⚙️</span>
+                    ${i18n['customGrouping.title'] || 'Manage Groups'}
                 </button>
             `;
             container.appendChild(bar);
             
-            const btn = bar.querySelector('#list-auto-group-btn');
-            if (btn) btn.addEventListener('click', handleAutoGroup);
+            const btn = bar.querySelector('#list-manage-group-btn');
+            if (btn) btn.addEventListener('click', openCustomGroupingModal);
         }
 
         if (config?.groupingEnabled && snapshot.groups && snapshot.groups.length > 0) {

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.47]
+
+### Fixed
+- **List View Consistency**: Updated list view to use the same "Manage Groups" logic as the card view, ensuring consistent group management across all views.
+
 ## [1.5.46]
 
 ### Added
