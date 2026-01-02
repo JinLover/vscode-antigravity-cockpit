@@ -518,11 +518,16 @@
                 contentHtml = `<div class="at-history-message">${statusText}</div>`;
             }
 
+            // 触发类型标签
+            const typeLabel = trigger.triggerType === 'auto' ? t('autoTrigger.typeAuto') : t('autoTrigger.typeManual');
+            const typeClass = trigger.triggerType === 'auto' ? 'at-history-type-auto' : 'at-history-type-manual';
+            const typeBadge = `<span class="at-history-type-badge ${typeClass}">${typeLabel}</span>`;
+            
             return `
                 <div class="at-history-item">
                     <span class="at-history-icon">${icon}</span>
                     <div class="at-history-info">
-                        <div class="at-history-time">${timeStr}</div>
+                        <div class="at-history-time">${timeStr}${typeBadge}</div>
                         ${contentHtml}
                     </div>
                     ${trigger.duration ? `<span class="at-history-duration">${trigger.duration}ms</span>` : ''}

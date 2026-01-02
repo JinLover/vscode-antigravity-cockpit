@@ -286,6 +286,8 @@ export const ptBR = {
     'autoTrigger.selectTimeHint': 'Escolha um horário',
     'autoTrigger.clearHistory': 'Limpar histórico',
     'autoTrigger.historyCleared': 'Histórico limpo',
+    'autoTrigger.typeManual': 'Manual',
+    'autoTrigger.typeAuto': 'Automático',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Modo',
     'autoTrigger.modelsLabel': 'Modelos',

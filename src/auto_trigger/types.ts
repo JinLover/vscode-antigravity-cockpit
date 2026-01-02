@@ -72,6 +72,7 @@ export interface TriggerRecord {
     prompt?: string;    // 发送的请求内容
     message?: string;   // AI 的回复
     duration?: number;  // ms
+    triggerType?: 'manual' | 'auto'; // 触发类型：手动测试 | 自动触发
 }
 
 /**

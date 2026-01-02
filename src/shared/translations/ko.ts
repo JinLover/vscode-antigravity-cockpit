@@ -286,6 +286,8 @@ export const ko = {
     'autoTrigger.selectTimeHint': '트리거 시간을 선택하세요',
     'autoTrigger.clearHistory': '기록 삭제',
     'autoTrigger.historyCleared': '트리거 기록이 삭제되었습니다',
+    'autoTrigger.typeManual': '수동',
+    'autoTrigger.typeAuto': '자동',
     'autoTrigger.statusLabel': '상태',
     'autoTrigger.modeLabel': '모드',
     'autoTrigger.modelsLabel': '모델',

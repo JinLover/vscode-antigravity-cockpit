@@ -288,6 +288,8 @@ export const en = {
     'autoTrigger.selectTimeHint': 'Please select trigger time',
     'autoTrigger.clearHistory': 'Clear History',
     'autoTrigger.historyCleared': 'Trigger history cleared',
+    'autoTrigger.typeManual': 'Manual',
+    'autoTrigger.typeAuto': 'Auto',
     'time.today': 'Today',
     'time.tomorrow': 'Tomorrow',
     'time.sunday': 'Sun',

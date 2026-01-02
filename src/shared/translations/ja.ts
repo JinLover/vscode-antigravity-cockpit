@@ -287,6 +287,8 @@ export const ja = {
     'autoTrigger.selectTimeHint': 'トリガー時間を選択してください',
     'autoTrigger.clearHistory': '履歴をクリア',
     'autoTrigger.historyCleared': 'トリガー履歴をクリアしました',
+    'autoTrigger.typeManual': '手動',
+    'autoTrigger.typeAuto': '自動',
     'autoTrigger.statusLabel': 'ステータス',
     'autoTrigger.modeLabel': 'モード',
     'autoTrigger.modelsLabel': 'モデル',

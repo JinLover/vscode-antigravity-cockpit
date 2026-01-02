@@ -286,6 +286,8 @@ export const cs = {
     'autoTrigger.selectTimeHint': 'Vyberte čas',
     'autoTrigger.clearHistory': 'Vymazat historii',
     'autoTrigger.historyCleared': 'Historie vymazána',
+    'autoTrigger.typeManual': 'Ruční',
+    'autoTrigger.typeAuto': 'Automaticky',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Režim',
     'autoTrigger.modelsLabel': 'Modely',

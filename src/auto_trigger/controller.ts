@@ -183,7 +183,7 @@ class AutoTriggerController {
             selectedModels = schedule.selectedModels || ['gemini-3-flash'];
         }
 
-        const result = await triggerService.trigger(selectedModels);
+        const result = await triggerService.trigger(selectedModels, 'manual');
 
         if (result.success) {
             vscode.window.showInformationMessage(`✅ 触发成功！耗时 ${result.duration}ms`);
@@ -216,7 +216,7 @@ class AutoTriggerController {
             selectedModels = schedule.selectedModels || ['gemini-3-flash'];
         }
 
-        const result = await triggerService.trigger(selectedModels);
+        const result = await triggerService.trigger(selectedModels, 'manual');
 
         // 通知 UI 更新
         this.notifyStateUpdate();
@@ -246,7 +246,7 @@ class AutoTriggerController {
             repeatMode: 'daily',
             selectedModels: ['gemini-3-flash'],
         });
-        const result = await triggerService.trigger(schedule.selectedModels);
+        const result = await triggerService.trigger(schedule.selectedModels, 'auto');
         
         if (result.success) {
             logger.info('[AutoTriggerController] Scheduled trigger executed successfully');

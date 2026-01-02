@@ -287,6 +287,8 @@ export const zhTW = {
     'autoTrigger.selectTimeHint': '請選擇觸發時間',
     'autoTrigger.clearHistory': '清空歷史',
     'autoTrigger.historyCleared': '觸發歷史已清空',
+    'autoTrigger.typeManual': '手動',
+    'autoTrigger.typeAuto': '自動',
     'autoTrigger.statusLabel': '狀態',
     'autoTrigger.modeLabel': '模式',
     'autoTrigger.modelsLabel': '模型',

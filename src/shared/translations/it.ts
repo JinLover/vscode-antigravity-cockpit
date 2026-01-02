@@ -286,6 +286,8 @@ export const it = {
     'autoTrigger.selectTimeHint': 'Scegli un\'ora',
     'autoTrigger.clearHistory': 'Cancella cronologia',
     'autoTrigger.historyCleared': 'Cronologia cancellata',
+    'autoTrigger.typeManual': 'Manuale',
+    'autoTrigger.typeAuto': 'Automatico',
     'autoTrigger.statusLabel': 'Stato',
     'autoTrigger.modeLabel': 'Modalità',
     'autoTrigger.modelsLabel': 'Modelli',

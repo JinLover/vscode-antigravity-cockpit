@@ -286,6 +286,8 @@ export const ru = {
     'autoTrigger.selectTimeHint': 'Выберите время',
     'autoTrigger.clearHistory': 'Очистить историю',
     'autoTrigger.historyCleared': 'История очищена',
+    'autoTrigger.typeManual': 'Вручную',
+    'autoTrigger.typeAuto': 'Автоматически',
     'autoTrigger.statusLabel': 'Статус',
     'autoTrigger.modeLabel': 'Режим',
     'autoTrigger.modelsLabel': 'Модели',

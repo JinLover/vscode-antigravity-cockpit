@@ -286,6 +286,8 @@ export const tr = {
     'autoTrigger.selectTimeHint': 'Bir zaman seçin',
     'autoTrigger.clearHistory': 'Geçmişi Temizle',
     'autoTrigger.historyCleared': 'Geçmiş temizlendi',
+    'autoTrigger.typeManual': 'Manuel',
+    'autoTrigger.typeAuto': 'Otomatik',
     'autoTrigger.statusLabel': 'Durum',
     'autoTrigger.modeLabel': 'Mod',
     'autoTrigger.modelsLabel': 'Modeller',

@@ -73,12 +73,12 @@ class TriggerService {
      * 发送一条简短的对话消息以触发配额计时
      * @param models 要触发的模型列表，如果不传则使用默认
      */
-    async trigger(models?: string[]): Promise<TriggerRecord> {
+    async trigger(models?: string[], triggerType: 'manual' | 'auto' = 'manual'): Promise<TriggerRecord> {
         const startTime = Date.now();
         const triggerModels = (models && models.length > 0) ? models : ['gemini-3-flash'];
         const promptText = 'hi';  // 发送的请求内容
         
-        logger.info(`[TriggerService] Starting trigger for models: ${triggerModels.join(', ')}...`);
+        logger.info(`[TriggerService] Starting trigger (${triggerType}) for models: ${triggerModels.join(', ')}...`);
 
         try {
             // 1. 获取有效的 access_token
@@ -106,6 +106,7 @@ class TriggerService {
                 prompt: `[${triggerModels.join(', ')}] ${promptText}`,
                 message: results.join('\n'),
                 duration: Date.now() - startTime,
+                triggerType: triggerType,
             };
 
             this.addRecord(record);
@@ -122,6 +123,7 @@ class TriggerService {
                 prompt: `[${triggerModels.join(', ')}] ${promptText}`,
                 message: err.message,
                 duration: Date.now() - startTime,
+                triggerType: triggerType,
             };
 
             this.addRecord(record);

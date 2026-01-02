@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.12]
+
+### Improved
+- **Auto Wake-up**: Added "Manual/Auto" labels in trigger history for better clarity
+
 ## [1.6.11]
 
 ### Improved

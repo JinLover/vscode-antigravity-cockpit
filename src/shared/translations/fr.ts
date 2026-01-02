@@ -286,6 +286,8 @@ export const fr = {
     'autoTrigger.selectTimeHint': 'Veuillez choisir une heure',
     'autoTrigger.clearHistory': 'Effacer l\'historique',
     'autoTrigger.historyCleared': 'Historique effacé',
+    'autoTrigger.typeManual': 'Manuel',
+    'autoTrigger.typeAuto': 'Automatique',
     'autoTrigger.statusLabel': 'Statut',
     'autoTrigger.modeLabel': 'Mode',
     'autoTrigger.modelsLabel': 'Modèles',

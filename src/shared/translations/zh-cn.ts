@@ -288,6 +288,8 @@ export const zhCN = {
     'autoTrigger.selectTimeHint': '请选择触发时间',
     'autoTrigger.clearHistory': '清空历史',
     'autoTrigger.historyCleared': '触发历史已清空',
+    'autoTrigger.typeManual': '手动',
+    'autoTrigger.typeAuto': '自动',
     'time.today': '今天',
     'time.tomorrow': '明天',
     'time.sunday': '周日',
