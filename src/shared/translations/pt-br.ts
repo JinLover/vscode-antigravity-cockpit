@@ -317,6 +317,7 @@ export const ptBR = {
     'announcement.markAllRead': 'Marcar todas como lidas',
     'announcement.gotIt': 'Entendi',
     'announcement.later': 'Mais tarde',
+    'announcement.clickToClose': 'Clique para fechar',
     'announcement.new': 'Novo',
     'announcement.timeAgo.justNow': 'Agora mesmo',
     'announcement.timeAgo.minutesAgo': 'Há {count}m',

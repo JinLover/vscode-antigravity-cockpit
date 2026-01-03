@@ -318,6 +318,7 @@ export const ja = {
     'announcement.markAllRead': 'すべて既読にする',
     'announcement.gotIt': '了解',
     'announcement.later': '後で',
+    'announcement.clickToClose': 'クリックして閉じる',
     'announcement.new': '新着',
     'announcement.timeAgo.justNow': 'たった今',
     'announcement.timeAgo.minutesAgo': '{count}分前',

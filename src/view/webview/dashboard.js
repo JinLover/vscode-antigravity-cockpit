@@ -2321,7 +2321,39 @@
             popupType.className = `announcement-type-badge ${ann.type}`;
         }
         if (popupTitle) popupTitle.textContent = ann.title;
-        if (popupContent) popupContent.textContent = ann.content;
+        
+        // 渲染内容和图片
+        if (popupContent) {
+            let contentHtml = `<div class="announcement-text">${escapeHtml(ann.content).replace(/\n/g, '<br>')}</div>`;
+            
+            // 如果有图片，渲染图片区域
+            if (ann.images && ann.images.length > 0) {
+                contentHtml += '<div class="announcement-images">';
+                for (const img of ann.images) {
+                    contentHtml += `
+                        <div class="announcement-image-item">
+                            <img src="${escapeHtml(img.url)}" 
+                                 alt="${escapeHtml(img.alt || img.label || '')}" 
+                                 class="announcement-image"
+                                 data-preview-url="${escapeHtml(img.url)}"
+                                 title="点击放大" />
+                            ${img.label ? `<div class="announcement-image-label">${escapeHtml(img.label)}</div>` : ''}
+                        </div>
+                    `;
+                }
+                contentHtml += '</div>';
+            }
+            
+            popupContent.innerHTML = contentHtml;
+            
+            // 绑定图片点击事件
+            popupContent.querySelectorAll('.announcement-image').forEach(imgEl => {
+                imgEl.addEventListener('click', () => {
+                    const url = imgEl.getAttribute('data-preview-url');
+                    if (url) showImagePreview(url);
+                });
+            });
+        }
 
         // 处理操作按钮
         if (ann.action && ann.action.label) {
@@ -2456,6 +2488,34 @@
             }, 600);
         }
     }
+
+    // ============ 图片预览 ============
+    
+    function showImagePreview(imageUrl) {
+        // 创建预览遮罩
+        const overlay = document.createElement('div');
+        overlay.className = 'image-preview-overlay';
+        overlay.innerHTML = `
+            <div class="image-preview-container">
+                <img src="${imageUrl}" class="image-preview-img" />
+                <div class="image-preview-hint">${i18n['announcement.clickToClose'] || 'Click to close'}</div>
+            </div>
+        `;
+        
+        // 点击关闭
+        overlay.addEventListener('click', () => {
+            overlay.classList.add('closing');
+            setTimeout(() => overlay.remove(), 200);
+        });
+        
+        document.body.appendChild(overlay);
+        
+        // 触发动画
+        requestAnimationFrame(() => overlay.classList.add('visible'));
+    }
+    
+    // 暴露到 window 供 onclick 调用
+    window.showImagePreview = showImagePreview;
 
     // ============ 启动 ============
 

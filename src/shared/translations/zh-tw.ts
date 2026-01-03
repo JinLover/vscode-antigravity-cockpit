@@ -318,6 +318,7 @@ export const zhTW = {
     'announcement.markAllRead': '全部已讀',
     'announcement.gotIt': '知道了',
     'announcement.later': '稍後再說',
+    'announcement.clickToClose': '點擊關閉',
     'announcement.new': '新',
     'announcement.timeAgo.justNow': '剛剛',
     'announcement.timeAgo.minutesAgo': '{count}分鐘前',

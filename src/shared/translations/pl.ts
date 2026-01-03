@@ -317,6 +317,7 @@ export const pl = {
     'announcement.markAllRead': 'Oznacz wszystko jako przeczytane',
     'announcement.gotIt': 'Rozumiem',
     'announcement.later': 'Później',
+    'announcement.clickToClose': 'Kliknij, aby zamknąć',
     'announcement.new': 'Nowe',
     'announcement.timeAgo.justNow': 'Przed chwilą',
     'announcement.timeAgo.minutesAgo': '{count}m temu',

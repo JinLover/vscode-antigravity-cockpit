@@ -317,6 +317,7 @@ export const ko = {
     'announcement.markAllRead': '모두 읽음으로 표시',
     'announcement.gotIt': '확인',
     'announcement.later': '나중에',
+    'announcement.clickToClose': '클릭하여 닫기',
     'announcement.new': '새로운 알림',
     'announcement.timeAgo.justNow': '방금 전',
     'announcement.timeAgo.minutesAgo': '{count}분 전',

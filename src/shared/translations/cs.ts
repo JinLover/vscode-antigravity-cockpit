@@ -317,6 +317,7 @@ export const cs = {
     'announcement.markAllRead': 'Označit vše jako přečtené',
     'announcement.gotIt': 'Rozumím',
     'announcement.later': 'Později',
+    'announcement.clickToClose': 'Kliknutím zavřete',
     'announcement.new': 'Nové',
     'announcement.timeAgo.justNow': 'Právě teď',
     'announcement.timeAgo.minutesAgo': 'Před {count}m',

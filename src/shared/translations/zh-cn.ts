@@ -329,4 +329,5 @@ export const zhCN = {
     'announcement.type.info': 'ℹ️ 信息',
     'announcement.type.urgent': '🚨 紧急',
     'announcement.refreshed': '公告已刷新（共 {count} 条）',
+    'announcement.clickToClose': '点击关闭',
 };

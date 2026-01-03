@@ -317,6 +317,7 @@ export const tr = {
     'announcement.markAllRead': 'Tümünü okundu işaretle',
     'announcement.gotIt': 'Anlaşıldı',
     'announcement.later': 'Daha sonra',
+    'announcement.clickToClose': 'Kapatmak için tıklayın',
     'announcement.new': 'Yeni',
     'announcement.timeAgo.justNow': 'Az önce',
     'announcement.timeAgo.minutesAgo': '{count}dk önce',

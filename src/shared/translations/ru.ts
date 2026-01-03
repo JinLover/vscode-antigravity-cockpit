@@ -317,6 +317,7 @@ export const ru = {
     'announcement.markAllRead': 'Прочитать всё',
     'announcement.gotIt': 'Понятно',
     'announcement.later': 'Позже',
+    'announcement.clickToClose': 'Нажмите, чтобы закрыть',
     'announcement.new': 'Новое',
     'announcement.timeAgo.justNow': 'Только что',
     'announcement.timeAgo.minutesAgo': '{count}м назад',

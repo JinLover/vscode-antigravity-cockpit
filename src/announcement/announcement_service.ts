@@ -8,7 +8,8 @@ import { Announcement, AnnouncementResponse, AnnouncementState } from './types';
 import { logger } from '../shared/log_service';
 
 // 公告源 URL（GitHub Gist Raw URL）
-const ANNOUNCEMENT_URL = 'https://gist.githubusercontent.com/jlcodes99/49facf261e9479a5b50fb81e4ab0afad/raw/announcements.json';
+const ANNOUNCEMENT_URL_PROD = 'https://gist.githubusercontent.com/jlcodes99/49facf261e9479a5b50fb81e4ab0afad/raw/announcements.json';
+const ANNOUNCEMENT_URL_DEV = 'https://gist.githubusercontent.com/jlcodes99/5618ef028eeaa7bdf6c45eca176f2a0a/raw/announcements_dev.json';
 
 // 存储键
 const READ_IDS_KEY = 'announcement_read_ids';
@@ -63,6 +64,7 @@ class AnnouncementService {
     private currentVersion: string = '0.0.0';
     private cachedAnnouncements: Announcement[] = [];
     private initialized = false;
+    private announcementUrl: string = ANNOUNCEMENT_URL_PROD;
 
     /**
      * 初始化服务
@@ -82,8 +84,14 @@ class AnnouncementService {
             this.cachedAnnouncements = cached.data;
         }
         
+        // 开发环境使用测试公告源
+        if (context.extensionMode === vscode.ExtensionMode.Development) {
+            this.announcementUrl = ANNOUNCEMENT_URL_DEV;
+            logger.info('[AnnouncementService] Using DEV announcement source');
+        }
+        
         this.initialized = true;
-        logger.info(`[AnnouncementService] Initialized, version=${this.currentVersion}`);
+        logger.info(`[AnnouncementService] Initialized, version=${this.currentVersion}, url=${this.announcementUrl.includes('dev') ? 'DEV' : 'PROD'}`);
     }
 
     /**
@@ -104,7 +112,7 @@ class AnnouncementService {
             const timeout = setTimeout(() => controller.abort(), 10000);
 
             // 添加时间戳参数绕过 HTTP 缓存
-            const urlWithTimestamp = `${ANNOUNCEMENT_URL}?t=${Date.now()}`;
+            const urlWithTimestamp = `${this.announcementUrl}?t=${Date.now()}`;
             const response = await fetch(urlWithTimestamp, {
                 headers: { 
                     'Cache-Control': 'no-cache',
@@ -152,7 +160,21 @@ class AnnouncementService {
                 }
             }
 
-            // 2. 未过期
+            // 2. 语言匹配
+            if (ann.targetLanguages && ann.targetLanguages.length > 0) {
+                const isAllLanguages = ann.targetLanguages.includes('*');
+                if (!isAllLanguages) {
+                    // 支持精确匹配 (zh-cn) 和前缀匹配 (zh)
+                    const isMatch = ann.targetLanguages.some(lang => 
+                        lang.toLowerCase() === locale || locale.startsWith(lang.toLowerCase() + '-')
+                    );
+                    if (!isMatch) {
+                        return false;
+                    }
+                }
+            }
+
+            // 3. 未过期
             if (ann.expiresAt) {
                 const expireTime = new Date(ann.expiresAt).getTime();
                 if (expireTime < now) {

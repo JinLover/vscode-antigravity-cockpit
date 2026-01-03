@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.14]
+
+### Added
+- **Announcement**: Enhanced announcement system with image support (QR codes, etc.) and per-language content targeting.
+- **Announcement**: Added "Click to Enlarge" preview for announcement images.
+
 ## [1.6.13]
 
 ### Improved

@@ -29,6 +29,16 @@ export interface AnnouncementLocale {
     actionLabel?: string;
 }
 
+/** 公告图片 */
+export interface AnnouncementImage {
+    /** 图片 URL */
+    url: string;
+    /** 图片标签（如 "QQ 群"、"微信群"） */
+    label?: string;
+    /** 图片替代文字 */
+    alt?: string;
+}
+
 /** 单条公告 */
 export interface Announcement {
     /** 唯一标识 */
@@ -47,6 +57,8 @@ export interface Announcement {
     action?: AnnouncementAction | null;
     /** 目标版本范围（如 ">=1.6.0", "*" 表示所有） */
     targetVersions: string;
+    /** 目标语言列表（如 ["zh-cn", "zh-tw"], ["*"] 或留空表示所有语言） */
+    targetLanguages?: string[];
     /** 是否仅显示一次（标记已读后不再弹） */
     showOnce: boolean;
     /** 是否主动弹框 */
@@ -57,6 +69,8 @@ export interface Announcement {
     expiresAt?: string | null;
     /** 多语言支持（可选） */
     locales?: { [key: string]: AnnouncementLocale };
+    /** 图片列表（可选） */
+    images?: AnnouncementImage[];
 }
 
 /** 公告 API 响应 */

@@ -329,4 +329,5 @@ export const en = {
     'announcement.type.info': 'ℹ️ Info',
     'announcement.type.urgent': '🚨 Urgent',
     'announcement.refreshed': 'Announcements refreshed ({count} total)',
+    'announcement.clickToClose': 'Click to close',
 };
