@@ -187,6 +187,7 @@ export const ja = {
 
     // エラーメッセージ
     'error.invalidResponse': 'サーバー応答が無効です: {details}',
+    'error.serverError': 'Antigravity エラー: {message}',
 
     // QuickPickモード
     'quickpick.placeholder': 'モデルをクリックして固定 | 右上: 更新、グループ、ログ、設定、Webview',
@@ -230,6 +231,7 @@ export const ja = {
     // Footer
     'footer.enjoyingThis': 'お気に入りですか？⭐をお願いします！',
     'footer.feedback': 'フィードバック',
+    'footer.star': '⭐ スター',
     'footer.donate': '寄付',
 
     // Auto Trigger
@@ -291,6 +293,9 @@ export const ja = {
     'autoTrigger.historyCleared': 'トリガー履歴をクリアしました',
     'autoTrigger.typeManual': '手動',
     'autoTrigger.typeAuto': '自動',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'ステータス',
     'autoTrigger.modeLabel': 'モード',
     'autoTrigger.modelsLabel': 'モデル',
@@ -302,6 +307,23 @@ export const ja = {
     'autoTrigger.testing': 'テスト中...',
     'autoTrigger.testingPleaseWait': 'テスト中...お待ちください',
     'autoTrigger.runTest': 'テスト実行',
+    'autoTrigger.wakeOnReset': 'クォータリセット時に自動起動',
+    'autoTrigger.wakeOnResetHint': 'クォータが回復したことを検出すると、自動的にウェイクアップをトリガーします。',
+    'autoTrigger.customPrompt': 'カスタムウェイクワード',
+    'autoTrigger.customPromptPlaceholder': 'デフォルト: hi',
+    'autoTrigger.customPromptHint': 'AIに送信するウェイクアップメッセージ。空の場合はデフォルトの「hi」を使用。',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. 定時トリガー：設定した時間/周期で起動。\n2. Crontab：式でトリガー時間を定義。\n3. クォータリセット自動起動：クォータが満額に回復したら1回起動。',
+
+
     'time.today': '今日',
     'time.tomorrow': '明日',
     'time.sunday': '日曜日',

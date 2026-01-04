@@ -28,7 +28,7 @@ export class CommandController {
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
                     this.quickPickView.show();
                 } else {
-                    const success = await this.hud.revealHud(options?.tab);
+                    const success = await this.hud.revealHud(options?.tab ?? 'quota');
                     if (!success) {
                         // Webview 创建失败，引导用户切换到 QuickPick 模式
                         const selection = await vscode.window.showWarningMessage(

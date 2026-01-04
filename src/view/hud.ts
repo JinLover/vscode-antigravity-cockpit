@@ -447,106 +447,132 @@ export class CockpitHUD {
                 <button id="at-config-close" class="close-btn">×</button>
             </div>
             <div class="modal-body at-config-body">
-                <!-- Enable Toggle -->
+                <!-- Enable Wake-up Toggle -->
                 <div class="at-config-row">
-                    <label>${t('autoTrigger.enableSchedule')}</label>
+                    <label>${t('autoTrigger.enableAutoWakeup')}</label>
                     <label class="toggle-switch">
                         <input type="checkbox" id="at-enable-schedule">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
 
-                <!-- Mode Selection -->
-                <div class="at-config-section">
-                    <label>${t('autoTrigger.repeatMode')}</label>
-                    <select id="at-mode-select" class="at-select">
-                        <option value="daily">${t('autoTrigger.daily')}</option>
-                        <option value="weekly">${t('autoTrigger.weekly')}</option>
-                        <option value="interval">${t('autoTrigger.interval')}</option>
-                    </select>
-                </div>
+                <div id="at-wakeup-config-body">
+                    <!-- Custom Prompt (shared by all modes) -->
+                    <div class="at-config-section at-custom-prompt-outer" id="at-custom-prompt-section">
+                        <label>${t('autoTrigger.customPrompt')}</label>
+                        <input type="text" id="at-custom-prompt" placeholder="${t('autoTrigger.customPromptPlaceholder')}" class="at-input" maxlength="100">
+                        <p class="at-hint">${t('autoTrigger.customPromptHint')}</p>
+                    </div>
 
-                <!-- Daily Config -->
-                <div id="at-config-daily" class="at-mode-config">
-                    <label>${t('autoTrigger.selectTime')}</label>
-                    <div class="at-time-grid" id="at-daily-times">
-                        ${renderTimeChips(timeOptions, '08:00')}
+                    <!-- Trigger Mode Selection -->
+                    <div class="at-config-section at-trigger-mode-section">
+                        <label>${t('autoTrigger.triggerMode')}</label>
+                        <p class="at-hint">${t('autoTrigger.triggerModeHint')}</p>
+                        <div id="at-trigger-mode-list" class="at-segmented">
+                            <button type="button" class="at-segment-btn" data-mode="scheduled">📅 ${t('autoTrigger.modeScheduled')}</button>
+                            <button type="button" class="at-segment-btn" data-mode="crontab">🧩 ${t('autoTrigger.modeCrontab')}</button>
+                            <button type="button" class="at-segment-btn" data-mode="quota_reset">🔄 ${t('autoTrigger.modeQuotaReset')}</button>
+                        </div>
                     </div>
-                    <div class="at-custom-time-row">
-                        <span class="at-custom-time-label">${t('autoTrigger.customTime')}</span>
-                        <input type="time" id="at-daily-custom-time" class="at-input-time at-input-time-compact">
-                        <button id="at-daily-add-time" class="at-btn at-btn-secondary at-btn-small">${t('autoTrigger.addTime')}</button>
-                    </div>
-                </div>
 
-                <!-- Weekly Config -->
-                <div id="at-config-weekly" class="at-mode-config hidden">
-                    <label>${t('autoTrigger.selectDay')}</label>
-                    <div class="at-day-grid" id="at-weekly-days">
-                        <div class="at-chip selected" data-day="1">一</div>
-                        <div class="at-chip selected" data-day="2">二</div>
-                        <div class="at-chip selected" data-day="3">三</div>
-                        <div class="at-chip selected" data-day="4">四</div>
-                        <div class="at-chip selected" data-day="5">五</div>
-                        <div class="at-chip" data-day="6">六</div>
-                        <div class="at-chip" data-day="0">日</div>
+                    <!-- Model Selection (shared by all modes) -->
+                    <div class="at-config-section">
+                        <label>${t('autoTrigger.modelSection')}</label>
+                        <p class="at-hint">${t('autoTrigger.modelsHint')}</p>
+                        <div id="at-config-models" class="at-model-list">
+                            <div class="at-loading">${t('dashboard.connecting')}</div>
+                        </div>
                     </div>
-                    <div class="at-quick-btns">
-                        <button class="at-quick-btn" data-preset="workdays">${t('autoTrigger.workdays')}</button>
-                        <button class="at-quick-btn" data-preset="weekend">${t('autoTrigger.weekend')}</button>
-                        <button class="at-quick-btn" data-preset="all">${t('autoTrigger.allDays')}</button>
-                    </div>
-                    <label>${t('autoTrigger.selectTime')}</label>
-                    <div class="at-time-grid" id="at-weekly-times">
-                        ${renderTimeChips(timeOptions, '08:00')}
-                    </div>
-                    <div class="at-custom-time-row">
-                        <span class="at-custom-time-label">${t('autoTrigger.customTime')}</span>
-                        <input type="time" id="at-weekly-custom-time" class="at-input-time at-input-time-compact">
-                        <button id="at-weekly-add-time" class="at-btn at-btn-secondary at-btn-small">${t('autoTrigger.addTime')}</button>
-                    </div>
-                </div>
 
-                <!-- Interval Config -->
-                <div id="at-config-interval" class="at-mode-config hidden">
-                    <div class="at-interval-row">
-                        <label>${t('autoTrigger.intervalLabel')}</label>
-                        <input type="number" id="at-interval-hours" min="1" max="12" value="4" class="at-input-small">
-                        <span>${t('autoTrigger.hours')}</span>
-                    </div>
-                    <div class="at-interval-row">
-                        <label>${t('autoTrigger.from')}</label>
-                        <input type="time" id="at-interval-start" value="07:00" class="at-input-time">
-                        <label>${t('autoTrigger.to')}</label>
-                        <input type="time" id="at-interval-end" value="22:00" class="at-input-time">
-                    </div>
-                </div>
+                    <!-- Scheduled Config -->
+                    <div id="at-schedule-config-section">
+                        <div class="at-config-section">
+                            <label>${t('autoTrigger.repeatMode')}</label>
+                            <select id="at-mode-select" class="at-select">
+                                <option value="daily">${t('autoTrigger.daily')}</option>
+                                <option value="weekly">${t('autoTrigger.weekly')}</option>
+                                <option value="interval">${t('autoTrigger.interval')}</option>
+                            </select>
+                        </div>
 
-                <!-- Model Selection -->
-                <div class="at-config-section">
-                    <label>${t('autoTrigger.modelSection')}</label>
-                    <p class="at-hint">${t('autoTrigger.modelsHint')}</p>
-                    <div id="at-config-models" class="at-model-list">
-                        <div class="at-loading">${t('dashboard.connecting')}</div>
-                    </div>
-                </div>
+                        <div id="at-config-daily" class="at-mode-config">
+                            <label>${t('autoTrigger.selectTime')}</label>
+                            <div class="at-time-grid" id="at-daily-times">
+                                ${renderTimeChips(timeOptions, '08:00')}
+                            </div>
+                            <div class="at-custom-time-row">
+                                <span class="at-custom-time-label">${t('autoTrigger.customTime')}</span>
+                                <input type="time" id="at-daily-custom-time" class="at-input-time at-input-time-compact">
+                                <button id="at-daily-add-time" class="at-btn at-btn-secondary at-btn-small">${t('autoTrigger.addTime')}</button>
+                            </div>
+                        </div>
 
-                <!-- Crontab (Collapsed) -->
-                <details class="at-advanced">
-                    <summary>${t('autoTrigger.advanced')}</summary>
-                    <div class="at-crontab-row">
-                        <input type="text" id="at-crontab-input" placeholder="${t('autoTrigger.crontabPlaceholder')}" class="at-input">
-                        <button id="at-crontab-validate" class="at-btn at-btn-small">${t('autoTrigger.validate')}</button>
-                    </div>
-                    <div id="at-crontab-result" class="at-crontab-result"></div>
-                </details>
+                        <div id="at-config-weekly" class="at-mode-config hidden">
+                            <label>${t('autoTrigger.selectDay')}</label>
+                            <div class="at-day-grid" id="at-weekly-days">
+                                <div class="at-chip selected" data-day="1">一</div>
+                                <div class="at-chip selected" data-day="2">二</div>
+                                <div class="at-chip selected" data-day="3">三</div>
+                                <div class="at-chip selected" data-day="4">四</div>
+                                <div class="at-chip selected" data-day="5">五</div>
+                                <div class="at-chip" data-day="6">六</div>
+                                <div class="at-chip" data-day="0">日</div>
+                            </div>
+                            <div class="at-quick-btns">
+                                <button class="at-quick-btn" data-preset="workdays">${t('autoTrigger.workdays')}</button>
+                                <button class="at-quick-btn" data-preset="weekend">${t('autoTrigger.weekend')}</button>
+                                <button class="at-quick-btn" data-preset="all">${t('autoTrigger.allDays')}</button>
+                            </div>
+                            <label>${t('autoTrigger.selectTime')}</label>
+                            <div class="at-time-grid" id="at-weekly-times">
+                                ${renderTimeChips(timeOptions, '08:00')}
+                            </div>
+                            <div class="at-custom-time-row">
+                                <span class="at-custom-time-label">${t('autoTrigger.customTime')}</span>
+                                <input type="time" id="at-weekly-custom-time" class="at-input-time at-input-time-compact">
+                                <button id="at-weekly-add-time" class="at-btn at-btn-secondary at-btn-small">${t('autoTrigger.addTime')}</button>
+                            </div>
+                        </div>
 
-                <!-- Preview -->
-                <div class="at-preview">
-                    <label>${t('autoTrigger.preview')}</label>
-                    <ul id="at-next-runs" class="at-preview-list">
-                        <li>${t('autoTrigger.selectTimeHint')}</li>
-                    </ul>
+                        <div id="at-config-interval" class="at-mode-config hidden">
+                            <div class="at-interval-row">
+                                <label>${t('autoTrigger.intervalLabel')}</label>
+                                <input type="number" id="at-interval-hours" min="1" max="12" value="4" class="at-input-small">
+                                <span>${t('autoTrigger.hours')}</span>
+                            </div>
+                            <div class="at-interval-row">
+                                <label>${t('autoTrigger.from')}</label>
+                                <input type="time" id="at-interval-start" value="07:00" class="at-input-time">
+                                <label>${t('autoTrigger.to')}</label>
+                                <input type="time" id="at-interval-end" value="22:00" class="at-input-time">
+                            </div>
+                        </div>
+
+                        <div class="at-preview">
+                            <label>${t('autoTrigger.preview')}</label>
+                            <ul id="at-next-runs-scheduled" class="at-preview-list">
+                                <li>${t('autoTrigger.selectTimeHint')}</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Crontab Config -->
+                    <div id="at-crontab-config-section" class="hidden">
+                        <div class="at-config-section">
+                            <label>${t('autoTrigger.crontabLabel')}</label>
+                            <div class="at-crontab-row">
+                                <input type="text" id="at-crontab-input" placeholder="${t('autoTrigger.crontabPlaceholder')}" class="at-input">
+                                <button id="at-crontab-validate" class="at-btn at-btn-small">${t('autoTrigger.validate')}</button>
+                            </div>
+                            <div id="at-crontab-result" class="at-crontab-result"></div>
+                        </div>
+                        <div class="at-preview">
+                            <label>${t('autoTrigger.preview')}</label>
+                            <ul id="at-next-runs-crontab" class="at-preview-list">
+                                <li>${t('autoTrigger.selectTimeHint')}</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -567,6 +593,12 @@ export class CockpitHUD {
                 <label>${t('autoTrigger.selectModels')}</label>
                 <div id="at-test-models" class="at-model-list">
                     <div class="at-loading">${t('dashboard.connecting')}</div>
+                </div>
+                
+                <!-- Custom Prompt for Test -->
+                <div class="at-config-section at-test-prompt-section">
+                    <label>${t('autoTrigger.customPrompt')}</label>
+                    <input type="text" id="at-test-custom-prompt" placeholder="${t('autoTrigger.customPromptPlaceholder')}" class="at-input" maxlength="100">
                 </div>
             </div>
             <div class="modal-footer">

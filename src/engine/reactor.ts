@@ -297,6 +297,26 @@ export class ReactorCore {
         if (this.updateHandler) {
             this.updateHandler(telemetry);
         }
+        
+        // 检查配额重置并触发自动唤醒（异步执行，不阻塞主流程）
+        this.checkQuotaResetTrigger(telemetry.models).catch(err => {
+            logger.warn(`[ReactorCore] Wake on reset check failed: ${err}`);
+        });
+    }
+    
+    /**
+     * 检查配额重置并触发自动唤醒
+     */
+    private async checkQuotaResetTrigger(models: ModelQuotaInfo[]): Promise<void> {
+        // 构建检测所需的数据
+        const modelData = models.map(m => ({
+            id: m.modelId,
+            resetAt: m.resetTime.toISOString(),
+            remaining: m.remainingFraction !== undefined ? Math.round(m.remainingFraction * 100) : 0,
+            limit: 100,  // 使用百分比，limit 固定为 100
+        }));
+        
+        await autoTriggerController.checkAndTriggerOnQuotaReset(modelData);
     }
 
     /**

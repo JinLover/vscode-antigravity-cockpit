@@ -187,6 +187,7 @@ export const ru = {
 
     // Сообщения об ошибках
     'error.invalidResponse': 'Неверный ответ сервера: {details}',
+    'error.serverError': 'Ошибка Antigravity: {message}',
 
     // Режим QuickPick
     'quickpick.placeholder': 'Кликните модель для закрепления | Справа: Обновить, Группа, Логи, Настройки, Webview',
@@ -290,6 +291,9 @@ export const ru = {
     'autoTrigger.historyCleared': 'История очищена',
     'autoTrigger.typeManual': 'Вручную',
     'autoTrigger.typeAuto': 'Автоматически',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Статус',
     'autoTrigger.modeLabel': 'Режим',
     'autoTrigger.modelsLabel': 'Модели',
@@ -301,6 +305,23 @@ export const ru = {
     'autoTrigger.testing': 'Testing...',
     'autoTrigger.testingPleaseWait': 'Testing... Please wait',
     'autoTrigger.runTest': 'Run Test',
+    'autoTrigger.wakeOnReset': 'Wake on Quota Reset',
+    'autoTrigger.wakeOnResetHint': 'Automatically trigger a wake-up when quota is detected to be fully restored.',
+    'autoTrigger.customPrompt': 'Custom Wake Word',
+    'autoTrigger.customPromptPlaceholder': 'Default: hi',
+    'autoTrigger.customPromptHint': 'Message sent to AI for wake-up, leave empty to use default "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. По расписанию: запуск в заданное время/интервалы.\n2. Crontab: время задаётся выражением.\n3. Сброс квоты: запуск один раз при полном восстановлении квоты.',
+
+
     'time.today': 'Сегодня',
     'time.tomorrow': 'Завтра',
     'time.sunday': 'Воскресенье',

@@ -231,6 +231,7 @@ export const zhCN = {
     // Footer
     'footer.enjoyingThis': '觉得好用？给个 ⭐ 支持一下！',
     'footer.feedback': '反馈',
+    'footer.star': '⭐ 星标',
     'footer.donate': '赞助',
 
     // Auto Trigger
@@ -245,7 +246,7 @@ export const zhCN = {
     'autoTrigger.authorizeBtn': '🔗 授权 Google 账号',
     'autoTrigger.reauthorizeBtn': '🔄 重新授权',
     'autoTrigger.revokeBtn': '🗑️ 取消授权',
-    'autoTrigger.scheduleSection': '📅 定时配置',
+    'autoTrigger.scheduleSection': '唤醒配置',
     'autoTrigger.enableSchedule': '启用定时触发',
     'autoTrigger.repeatMode': '重复方式',
     'autoTrigger.daily': '每天',
@@ -292,6 +293,9 @@ export const zhCN = {
     'autoTrigger.historyCleared': '触发历史已清空',
     'autoTrigger.typeManual': '手动',
     'autoTrigger.typeAuto': '自动',
+    'autoTrigger.typeAutoScheduled': '自动-定时',
+    'autoTrigger.typeAutoCrontab': '自动-Crontab',
+    'autoTrigger.typeAutoQuotaReset': '自动-配额重置',
     'time.today': '今天',
     'time.tomorrow': '明天',
     'time.sunday': '周日',
@@ -312,6 +316,21 @@ export const zhCN = {
     'autoTrigger.testing': '测试中...',
     'autoTrigger.testingPleaseWait': '正在测试，请稍候...',
     'autoTrigger.runTest': '开始测试',
+    'autoTrigger.wakeOnReset': '配额重置时自动唤醒',
+    'autoTrigger.wakeOnResetHint': '当检测到配额恢复满额时，自动触发一次唤醒请求。',
+    'autoTrigger.customPrompt': '自定义唤醒词',
+    'autoTrigger.customPromptPlaceholder': '默认: hi',
+    'autoTrigger.customPromptHint': '发送给 AI 的唤醒消息，留空使用默认值 "hi"。',
+    'autoTrigger.enableAutoWakeup': '启用唤醒功能',
+    'autoTrigger.triggerMode': '唤醒方式',
+    'autoTrigger.triggerModeHint': '1. 定时触发：按设定时间/周期唤醒。\n2. Crontab：用表达式定义触发时间。\n3. 配额重置自动唤醒：配额恢复满额时唤醒一次。',
+    'autoTrigger.modeScheduled': '定时触发',
+    'autoTrigger.modeScheduledHint': '按设定的时间/周期定时触发唤醒',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': '使用 Crontab 表达式定义触发时间',
+    'autoTrigger.modeQuotaReset': '配额重置自动唤醒',
+    'autoTrigger.modeQuotaResetHint': '检测到配额恢复满额时自动唤醒一次',
+    'autoTrigger.crontabLabel': 'Crontab 表达式',
 
     // Announcement
     'announcement.title': '消息通知',

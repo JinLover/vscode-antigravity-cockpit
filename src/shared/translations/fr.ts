@@ -187,6 +187,7 @@ export const fr = {
 
     // Messages d'Erreur
     'error.invalidResponse': 'Réponse serveur invalide: {details}',
+    'error.serverError': 'Erreur Antigravity : {message}',
 
     // Mode QuickPick
     'quickpick.placeholder': 'Clic sur modèle pour épingler | Haut-droit: Actualiser, Groupe, Logs, Paramètres, Webview',
@@ -290,6 +291,9 @@ export const fr = {
     'autoTrigger.historyCleared': 'Historique effacé',
     'autoTrigger.typeManual': 'Manuel',
     'autoTrigger.typeAuto': 'Automatique',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Statut',
     'autoTrigger.modeLabel': 'Mode',
     'autoTrigger.modelsLabel': 'Modèles',
@@ -301,6 +305,23 @@ export const fr = {
     'autoTrigger.testing': 'Test en cours...',
     'autoTrigger.testingPleaseWait': 'Test en cours... veuillez patienter',
     'autoTrigger.runTest': 'Lancer le test',
+    'autoTrigger.wakeOnReset': 'Réveil lors de la réinitialisation du quota',
+    'autoTrigger.wakeOnResetHint': 'Déclencher automatiquement un réveil lorsque le quota est détecté comme entièrement restauré.',
+    'autoTrigger.customPrompt': 'Mot de réveil personnalisé',
+    'autoTrigger.customPromptPlaceholder': 'Par défaut: hi',
+    'autoTrigger.customPromptHint': 'Message envoyé à l\'IA pour le réveil, laisser vide pour utiliser "hi" par défaut.',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Planifié : déclenche aux heures/périodes définies.\n2. Crontab : définit le moment avec une expression.\n3. Réinitialisation de quota : déclenche une fois lorsque le quota est entièrement rétabli.',
+
+
     'time.today': 'Aujourd\'hui',
     'time.tomorrow': 'Demain',
     'time.sunday': 'Dimanche',

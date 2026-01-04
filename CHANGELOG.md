@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.15]
+
+### Added
+- **Auto Wake-up**: Wake on quota reset mode and trigger history now records the exact auto mode.
+- **Auto Wake-up**: Custom wake word support for triggers and tests.
+
+### Improved
+- **Auto Wake-up**: Wake-up configuration UI reorganized by wake-up method with per-mode settings and previews.
+- **Notifications**: In quota grouping mode, threshold notifications fire once per group instead of per model.
+- **Status Bar**: Opening the webview defaults to the quota monitor tab.
+
 ## [1.6.14]
 
 ### Added

@@ -145,6 +145,52 @@ export class TelemetryController {
         const warningThreshold = config.warningThreshold ?? QUOTA_THRESHOLDS.WARNING_DEFAULT;
         const criticalThreshold = config.criticalThreshold ?? QUOTA_THRESHOLDS.CRITICAL_DEFAULT;
 
+        const useGroups = config.groupingEnabled && Array.isArray(snapshot.groups) && snapshot.groups.length > 0;
+        if (useGroups) {
+            for (const group of snapshot.groups) {
+                const pct = group.remainingPercentage ?? 0;
+                const keyBase = `group:${group.groupId}`;
+                const notifyKey = `${keyBase}-${pct <= criticalThreshold ? 'critical' : 'warning'}`;
+
+                // 如果已经通知过这个状态，跳过
+                if (this.notifiedModels.has(notifyKey)) {
+                    continue;
+                }
+
+                // 危险阈值通知（红色）
+                if (pct <= criticalThreshold && pct > 0) {
+                    // 清除之前的 warning 通知记录（如果有）
+                    this.notifiedModels.delete(`${keyBase}-warning`);
+                    this.notifiedModels.add(notifyKey);
+
+                    vscode.window.showWarningMessage(
+                        t('threshold.notifyCritical', { model: group.groupName, percent: pct.toFixed(1) }),
+                        t('dashboard.refresh'),
+                    ).then(selection => {
+                        if (selection === t('dashboard.refresh')) {
+                            this.reactor.syncTelemetry();
+                        }
+                    });
+                    logger.info(`Critical threshold notification sent for ${group.groupName}: ${pct}%`);
+                }
+                // 警告阈值通知（黄色）
+                else if (pct <= warningThreshold && pct > criticalThreshold) {
+                    this.notifiedModels.add(notifyKey);
+
+                    vscode.window.showInformationMessage(
+                        t('threshold.notifyWarning', { model: group.groupName, percent: pct.toFixed(1) }),
+                    );
+                    logger.info(`Warning threshold notification sent for ${group.groupName}: ${pct}%`);
+                }
+                // 配额恢复时清除通知记录
+                else if (pct > warningThreshold) {
+                    this.notifiedModels.delete(`${keyBase}-warning`);
+                    this.notifiedModels.delete(`${keyBase}-critical`);
+                }
+            }
+            return;
+        }
+
         for (const model of snapshot.models) {
             const pct = model.remainingPercentage ?? 0;
             const notifyKey = `${model.modelId}-${pct <= criticalThreshold ? 'critical' : 'warning'}`;

@@ -227,9 +227,9 @@ npm run package
 
 作者新建了技术交流群，目前人还不多，欢迎加入！
 
-| QQ 群 | 微信群 |
-| :---: | :---: |
-| <img src="docs/qq_group_qr.png" width="200" /> | <img src="docs/wechat_group_qr.png" width="200" /> |
+| 微信群 |
+| :---: |
+| <img src="docs/wechat_group_qr.png" width="200" /> |
 
 ---
 

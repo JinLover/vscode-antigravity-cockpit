@@ -187,6 +187,7 @@ export const es = {
 
     // Mensajes de Error
     'error.invalidResponse': 'Respuesta del servidor inválida: {details}',
+    'error.serverError': 'Error de Antigravity: {message}',
 
     // Modo QuickPick
     'quickpick.placeholder': 'Clic en modelo para fijar | Arriba-derecha: Actualizar, Grupo, Logs, Config, Webview',
@@ -290,6 +291,9 @@ export const es = {
     'autoTrigger.historyCleared': 'Historial borrado',
     'autoTrigger.typeManual': 'Manual',
     'autoTrigger.typeAuto': 'Automático',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Estado',
     'autoTrigger.modeLabel': 'Modo',
     'autoTrigger.modelsLabel': 'Modelos',
@@ -301,6 +305,23 @@ export const es = {
     'autoTrigger.testing': 'Probando...',
     'autoTrigger.testingPleaseWait': 'Probando... espere',
     'autoTrigger.runTest': 'Iniciar prueba',
+    'autoTrigger.wakeOnReset': 'Despertar al restablecer cuota',
+    'autoTrigger.wakeOnResetHint': 'Activar automáticamente un despertar cuando se detecte que la cuota está completamente restaurada.',
+    'autoTrigger.customPrompt': 'Palabra de despertar personalizada',
+    'autoTrigger.customPromptPlaceholder': 'Predeterminado: hi',
+    'autoTrigger.customPromptHint': 'Mensaje enviado a la IA para despertar, dejar vacío para usar "hi" por defecto.',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Programado: se activa en horarios/intervalos definidos.\n2. Crontab: define la hora con una expresión.\n3. Restablecimiento de cuota: se activa una vez cuando la cuota se restablece.',
+
+
     'time.today': 'Hoy',
     'time.tomorrow': 'Mañana',
     'time.sunday': 'Domingo',

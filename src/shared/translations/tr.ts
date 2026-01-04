@@ -187,6 +187,7 @@ export const tr = {
 
     // Hata Mesajları
     'error.invalidResponse': 'Geçersiz sunucu yanıtı: {details}',
+    'error.serverError': 'Antigravity Hatası: {message}',
 
     // QuickPick Modu
     'quickpick.placeholder': 'Model tıkla sabitlemek için | Sağ üst: Yenile, Grup, Günlükler, Ayarlar, Webview',
@@ -290,6 +291,9 @@ export const tr = {
     'autoTrigger.historyCleared': 'Geçmiş temizlendi',
     'autoTrigger.typeManual': 'Manuel',
     'autoTrigger.typeAuto': 'Otomatik',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Durum',
     'autoTrigger.modeLabel': 'Mod',
     'autoTrigger.modelsLabel': 'Modeller',
@@ -301,6 +305,23 @@ export const tr = {
     'autoTrigger.testing': 'Testing...',
     'autoTrigger.testingPleaseWait': 'Testing... Please wait',
     'autoTrigger.runTest': 'Run Test',
+    'autoTrigger.wakeOnReset': 'Wake on Quota Reset',
+    'autoTrigger.wakeOnResetHint': 'Automatically trigger a wake-up when quota is detected to be fully restored.',
+    'autoTrigger.customPrompt': 'Custom Wake Word',
+    'autoTrigger.customPromptPlaceholder': 'Default: hi',
+    'autoTrigger.customPromptHint': 'Message sent to AI for wake-up, leave empty to use default "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Zamanlanmış: ayarlanan saatlerde/aralıklarda tetikler.\n2. Crontab: tetikleme zamanı ifadeyle tanımlanır.\n3. Kota sıfırlama: kota tamamen yenilendiğinde bir kez tetikler.',
+
+
     'time.today': 'Bugün',
     'time.tomorrow': 'Yarın',
     'time.sunday': 'Pazar',

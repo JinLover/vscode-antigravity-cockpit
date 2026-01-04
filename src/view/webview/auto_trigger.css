@@ -426,6 +426,7 @@
     font-size: 12px;
     color: var(--vscode-descriptionForeground);
     margin: 4px 0 8px 0;
+    white-space: pre-line;
 }
 
 /* Advanced Section */
@@ -459,6 +460,129 @@
 
 .at-crontab-result {
     margin-top: 8px;
+    font-size: 12px;
+}
+
+/* Custom Prompt Section */
+.at-custom-prompt-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--vscode-panel-border);
+}
+
+.at-custom-prompt-section > label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--vscode-foreground);
+}
+
+.at-custom-prompt-section .at-input {
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+/* Hint below toggle */
+.at-hint-toggle {
+    margin: -8px 0 12px 0;
+    padding-left: 0;
+}
+
+/* Trigger Mode Selection */
+.at-trigger-mode-section {
+    margin: 16px 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.at-trigger-mode-section > label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--vscode-foreground);
+}
+
+.at-trigger-mode-section.at-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.at-segmented {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    background: var(--vscode-input-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 8px;
+}
+
+.at-segment-btn {
+    flex: 1;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--vscode-foreground);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.at-segment-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.at-segment-btn.selected {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-color: var(--vscode-button-background);
+}
+
+.at-segment-btn:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+}
+
+/* Custom Prompt in outer section */
+.at-custom-prompt-outer {
+    margin-top: 8px;
+}
+
+.at-custom-prompt-outer > label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--vscode-foreground);
+}
+
+.at-custom-prompt-outer .at-input {
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+/* Custom Prompt in Test Modal */
+.at-test-prompt-section {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--vscode-panel-border);
+}
+
+.at-test-prompt-section > label {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.at-test-prompt-section .at-input {
+    width: 100%;
     font-size: 12px;
 }
 

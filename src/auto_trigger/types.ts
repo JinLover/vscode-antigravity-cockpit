@@ -61,6 +61,12 @@ export interface ScheduleConfig {
     
     /** 选中的模型列表 (用于触发) */
     selectedModels: string[];
+    
+    /** 配额重置时自动唤醒 */
+    wakeOnReset?: boolean;
+    
+    /** 自定义唤醒词 (默认: "hi") */
+    customPrompt?: string;
 }
 
 /**
@@ -73,6 +79,7 @@ export interface TriggerRecord {
     message?: string;   // AI 的回复
     duration?: number;  // ms
     triggerType?: 'manual' | 'auto'; // 触发类型：手动测试 | 自动触发
+    triggerSource?: 'manual' | 'scheduled' | 'crontab' | 'quota_reset'; // 自动触发来源
 }
 
 /**

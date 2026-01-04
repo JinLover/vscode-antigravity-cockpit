@@ -187,6 +187,7 @@ export const de = {
 
     // Fehlermeldungen
     'error.invalidResponse': 'Ungültige Serverantwort: {details}',
+    'error.serverError': 'Antigravity-Fehler: {message}',
 
     // QuickPick-Modus
     'quickpick.placeholder': 'Modell klicken zum Anheften | Rechts oben: Aktualisieren, Gruppe, Logs, Einstellungen, Webview',
@@ -290,6 +291,9 @@ export const de = {
     'autoTrigger.historyCleared': 'Verlauf gelöscht',
     'autoTrigger.typeManual': 'Manuell',
     'autoTrigger.typeAuto': 'Automatisch',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Modus',
     'autoTrigger.modelsLabel': 'Modelle',
@@ -301,6 +305,23 @@ export const de = {
     'autoTrigger.testing': 'Test läuft...',
     'autoTrigger.testingPleaseWait': 'Test läuft... bitte warten',
     'autoTrigger.runTest': 'Test starten',
+    'autoTrigger.wakeOnReset': 'Bei Kontingent-Reset aufwecken',
+    'autoTrigger.wakeOnResetHint': 'Automatisches Aufwecken, wenn das Kontingent als vollständig wiederhergestellt erkannt wird.',
+    'autoTrigger.customPrompt': 'Benutzerdefiniertes Aufweckwort',
+    'autoTrigger.customPromptPlaceholder': 'Standard: hi',
+    'autoTrigger.customPromptHint': 'Nachricht an KI zum Aufwecken, leer lassen für Standard "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Zeitgesteuert: Auslösen zu festgelegten Zeiten/Intervallen.\n2. Crontab: Auslösezeit per Ausdruck definieren.\n3. Kontingent-Reset: Einmal auslösen, wenn das Kontingent wieder voll ist.',
+
+
     'time.today': 'Heute',
     'time.tomorrow': 'Morgen',
     'time.sunday': 'Sonntag',

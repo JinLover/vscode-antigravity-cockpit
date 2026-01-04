@@ -23,6 +23,7 @@
     
     // 配置状态
     let configEnabled = false;
+    let configTriggerMode = 'scheduled';
     let configMode = 'daily';
     let configDailyTimes = ['08:00'];
     let configWeeklyDays = [1, 2, 3, 4, 5];
@@ -81,10 +82,22 @@
             updatePreview();
         });
 
-        // 启用开关
+        // 总开关
         document.getElementById('at-enable-schedule')?.addEventListener('change', (e) => {
             configEnabled = e.target.checked;
-            updateModeConfigVisibility(); // Enable/Disable mode selector
+            updateConfigAvailability();
+        });
+        
+        // 唤醒方式
+        document.getElementById('at-trigger-mode-list')?.addEventListener('click', (e) => {
+            const target = e.target.closest('.at-segment-btn');
+            if (!target) return;
+            const mode = target.dataset.mode;
+            if (!mode) return;
+            configTriggerMode = mode;
+            updateTriggerModeSelection();
+            updateTriggerModeVisibility();
+            updatePreview();
         });
 
         // 时间选择 - Daily
@@ -161,12 +174,10 @@
             }
         });
         
-        // Crontab 输入监听：当有输入时禁用普通模式配置
-        document.getElementById('at-crontab-input')?.addEventListener('input', (e) => {
-            const hasCrontab = e.target.value.trim().length > 0;
-            updateCrontabExclusivity(hasCrontab);
-            if (hasCrontab) {
-                updatePreview();  // 刷新预览
+        // Crontab 输入监听
+        document.getElementById('at-crontab-input')?.addEventListener('input', () => {
+            if (configTriggerMode === 'crontab') {
+                updatePreview();
             }
         });
 
@@ -188,6 +199,8 @@
         updateModeConfigVisibility();
         updateTimeChips();
         updateDayChips();
+        updateTriggerModeVisibility();
+        updateConfigAvailability();
         updatePreview();
         document.getElementById('at-config-modal')?.classList.remove('hidden');
     }
@@ -263,17 +276,44 @@
         document.getElementById('at-interval-hours').value = configIntervalHours;
         document.getElementById('at-interval-start').value = configIntervalStart;
         
+        // 唤醒方式
+        if (s.wakeOnReset) {
+            configTriggerMode = 'quota_reset';
+        } else if (s.crontab) {
+            configTriggerMode = 'crontab';
+        } else {
+            configTriggerMode = 'scheduled';
+        }
+        updateTriggerModeSelection();
+        
+        // 自定义唤醒词
+        const customPromptInput = document.getElementById('at-custom-prompt');
+        if (customPromptInput) {
+            customPromptInput.value = s.customPrompt || '';
+        }
+        
         // 恢复 Crontab
         const crontabInput = document.getElementById('at-crontab-input');
         if (crontabInput) {
             crontabInput.value = s.crontab || '';
-            // 更新互斥状态（如果有 Crontab，禁用上面的配置）
-            updateCrontabExclusivity(!!s.crontab);
         }
         document.getElementById('at-interval-end').value = configIntervalEnd;
     }
 
     function saveConfig() {
+        const wakeOnReset = configTriggerMode === 'quota_reset';
+        const isCrontabMode = configTriggerMode === 'crontab';
+        const crontabValue = document.getElementById('at-crontab-input')?.value.trim() || '';
+        if (configEnabled && isCrontabMode && !crontabValue) {
+            const result = document.getElementById('at-crontab-result');
+            if (result) {
+                result.className = 'at-crontab-result';
+                result.style.color = 'var(--vscode-errorForeground)';
+                result.textContent = t('autoTrigger.crontabEmpty');
+            }
+            return;
+        }
+        
         const config = {
             enabled: configEnabled,
             repeatMode: configMode,
@@ -284,7 +324,9 @@
             intervalStartTime: configIntervalStart,
             intervalEndTime: configIntervalEnd,
             selectedModels: selectedModels.length > 0 ? selectedModels : ['gemini-3-flash'],
-            crontab: document.getElementById('at-crontab-input')?.value.trim() || undefined,
+            crontab: isCrontabMode ? (crontabValue || undefined) : undefined,
+            wakeOnReset: wakeOnReset,
+            customPrompt: document.getElementById('at-custom-prompt')?.value.trim() || undefined,
         };
 
         vscode.postMessage({
@@ -319,6 +361,9 @@
             testSelectedModels = [defaultModel];
         }
         
+        // 获取自定义唤醒词
+        const customPrompt = document.getElementById('at-test-custom-prompt')?.value.trim() || undefined;
+        
         // 设置加载状态
         isTestRunning = true;
         const runBtn = document.getElementById('at-test-run');
@@ -336,6 +381,7 @@
         vscode.postMessage({
             command: 'autoTrigger.test',
             models: [...testSelectedModels],
+            customPrompt: customPrompt,
         });
     }
     
@@ -372,26 +418,40 @@
 
     // ============ UI 更新 ============
 
-    function updateCrontabExclusivity(hasCrontab) {
-        // 当 Crontab 有内容时，禁用普通模式配置
-        const modeSelect = document.getElementById('at-mode-select');
-        const dailyConfig = document.getElementById('at-config-daily');
-        const weeklyConfig = document.getElementById('at-config-weekly');
-        const intervalConfig = document.getElementById('at-config-interval');
-        
-        if (hasCrontab) {
-            // 禁用模式选择和配置
-            if (modeSelect) modeSelect.disabled = true;
-            dailyConfig?.classList.add('at-disabled');
-            weeklyConfig?.classList.add('at-disabled');
-            intervalConfig?.classList.add('at-disabled');
-        } else {
-            // 恢复
-            if (modeSelect) modeSelect.disabled = false;
-            dailyConfig?.classList.remove('at-disabled');
-            weeklyConfig?.classList.remove('at-disabled');
-            intervalConfig?.classList.remove('at-disabled');
+    function updateConfigAvailability() {
+        const configBody = document.getElementById('at-wakeup-config-body');
+        if (!configBody) return;
+        configBody.classList.toggle('at-disabled', !configEnabled);
+    }
+
+    function updateTriggerModeVisibility() {
+        const scheduleSection = document.getElementById('at-schedule-config-section');
+        const crontabSection = document.getElementById('at-crontab-config-section');
+        const customPromptSection = document.getElementById('at-custom-prompt-section');
+
+        if (scheduleSection) {
+            scheduleSection.classList.toggle('hidden', configTriggerMode !== 'scheduled');
         }
+        if (crontabSection) {
+            crontabSection.classList.toggle('hidden', configTriggerMode !== 'crontab');
+        }
+        if (customPromptSection) {
+            customPromptSection.classList.remove('hidden');
+        }
+        updateTriggerModeSelection();
+        if (configTriggerMode === 'scheduled') {
+            updateModeConfigVisibility();
+        }
+    }
+
+    function updateTriggerModeSelection() {
+        const container = document.getElementById('at-trigger-mode-list');
+        if (!container) return;
+        container.querySelectorAll('.at-segment-btn').forEach(item => {
+            const mode = item.dataset.mode;
+            item.classList.toggle('selected', mode === configTriggerMode);
+            item.setAttribute('aria-pressed', mode === configTriggerMode ? 'true' : 'false');
+        });
     }
 
     function updateModeConfigVisibility() {
@@ -595,8 +655,20 @@
             }
 
             // 触发类型标签
-            const typeLabel = trigger.triggerType === 'auto' ? t('autoTrigger.typeAuto') : t('autoTrigger.typeManual');
-            const typeClass = trigger.triggerType === 'auto' ? 'at-history-type-auto' : 'at-history-type-manual';
+            let typeLabel = t('autoTrigger.typeManual');
+            let typeClass = 'at-history-type-manual';
+            if (trigger.triggerType === 'auto') {
+                typeClass = 'at-history-type-auto';
+                if (trigger.triggerSource === 'scheduled') {
+                    typeLabel = t('autoTrigger.typeAutoScheduled');
+                } else if (trigger.triggerSource === 'crontab') {
+                    typeLabel = t('autoTrigger.typeAutoCrontab');
+                } else if (trigger.triggerSource === 'quota_reset') {
+                    typeLabel = t('autoTrigger.typeAutoQuotaReset');
+                } else {
+                    typeLabel = t('autoTrigger.typeAuto');
+                }
+            }
             const typeBadge = `<span class="at-history-type-badge ${typeClass}">${typeLabel}</span>`;
             
             return `
@@ -620,14 +692,21 @@
     }
 
     function updatePreview() {
-        const container = document.getElementById('at-next-runs');
+        if (configTriggerMode === 'quota_reset') return;
+
+        const containerId = configTriggerMode === 'crontab'
+            ? 'at-next-runs-crontab'
+            : 'at-next-runs-scheduled';
+        const container = document.getElementById(containerId);
         if (!container) return;
 
-        // 检查是否有 Crontab 输入
-        const crontabInput = document.getElementById('at-crontab-input');
-        const crontab = crontabInput?.value?.trim();
-        
-        if (crontab) {
+        if (configTriggerMode === 'crontab') {
+            const crontabInput = document.getElementById('at-crontab-input');
+            const crontab = crontabInput?.value?.trim();
+            if (!crontab) {
+                container.innerHTML = `<li>${t('autoTrigger.crontabEmpty')}</li>`;
+                return;
+            }
             // 使用 Crontab 计算预览
             const nextRuns = calculateCrontabNextRuns(crontab, 5);
             if (nextRuns.length === 0) {
@@ -867,19 +946,21 @@
         if (tabDot) {
             // 只有在已授权且已启用的情况下显示状态点
             const isAuthorized = state.authorization?.isAuthorized;
-            const isEnabled = schedule.enabled;
-            if (isAuthorized && isEnabled) {
+            if (isAuthorized && schedule.enabled) {
                 tabDot.classList.remove('hidden');
             } else {
                 tabDot.classList.add('hidden');
             }
         }
 
-        // 模式 - 支持 Crontab
+        // 模式 - 支持 Crontab 和配额重置模式
         const modeValue = document.getElementById('at-mode-value');
         if (modeValue) {
             let modeText = '--';
-            if (schedule.crontab) {
+            if (schedule.wakeOnReset) {
+                // 配额重置模式
+                modeText = `🔄 ${t('autoTrigger.modeQuotaReset')}`;
+            } else if (schedule.crontab) {
                 // Crontab 模式
                 modeText = `Crontab: ${schedule.crontab}`;
             } else if (schedule.repeatMode === 'daily' && schedule.dailyTimes?.length) {
@@ -909,8 +990,11 @@
         // 下次触发
         const nextValue = document.getElementById('at-next-value');
         if (nextValue) {
-            // 使用正确的字段名 nextTriggerTime
-            if (schedule.enabled && state.nextTriggerTime) {
+            // 配额重置模式下无法预测下次触发时间
+            if (schedule.wakeOnReset) {
+                nextValue.textContent = '--';
+            } else if (schedule.enabled && state.nextTriggerTime) {
+                // 使用正确的字段名 nextTriggerTime
                 const nextDate = new Date(state.nextTriggerTime);
                 nextValue.textContent = formatDateTime(nextDate);
             } else if (schedule.enabled && schedule.crontab) {

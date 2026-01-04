@@ -187,6 +187,7 @@ export const ko = {
 
     // 오류 메시지
     'error.invalidResponse': '잘못된 서버 응답: {details}',
+    'error.serverError': 'Antigravity 오류: {message}',
 
     // QuickPick 모드
     'quickpick.placeholder': '모델 클릭하여 고정 | 오른쪽 상단: 새로고침, 그룹, 로그, 설정, Webview',
@@ -290,6 +291,9 @@ export const ko = {
     'autoTrigger.historyCleared': '트리거 기록이 삭제되었습니다',
     'autoTrigger.typeManual': '수동',
     'autoTrigger.typeAuto': '자동',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': '상태',
     'autoTrigger.modeLabel': '모드',
     'autoTrigger.modelsLabel': '모델',
@@ -301,6 +305,23 @@ export const ko = {
     'autoTrigger.testing': '테스트 중...',
     'autoTrigger.testingPleaseWait': '테스트 중입니다. 잠시만 기다려 주세요...',
     'autoTrigger.runTest': '테스트 시작',
+    'autoTrigger.wakeOnReset': '쿼터 리셋 시 자동 기상',
+    'autoTrigger.wakeOnResetHint': '쿼터가 완전히 복구된 것이 감지되면 자동으로 기상 요청을 트리거합니다.',
+    'autoTrigger.customPrompt': '사용자 정의 기상 메시지',
+    'autoTrigger.customPromptPlaceholder': '기본값: hi',
+    'autoTrigger.customPromptHint': 'AI에 보내는 기상 메시지, 비워두면 기본값 "hi"를 사용합니다.',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. 예약 트리거: 설정된 시간/주기로 깨웁니다.\n2. Crontab: 식으로 트리거 시간을 정의합니다.\n3. 쿼터 리셋 자동 깨우기: 쿼터가 완전히 복구되면 한 번 깨웁니다.',
+
+
     'time.today': '오늘',
     'time.tomorrow': '내일',
     'time.sunday': '일요일',

@@ -187,6 +187,7 @@ export const pl = {
 
     // Komunikaty Błędów
     'error.invalidResponse': 'Nieprawidłowa odpowiedź serwera: {details}',
+    'error.serverError': 'Błąd Antigravity: {message}',
 
     // Tryb QuickPick
     'quickpick.placeholder': 'Kliknij model aby przypiąć | Prawy górny: Odśwież, Grupa, Logi, Ustawienia, Webview',
@@ -290,6 +291,9 @@ export const pl = {
     'autoTrigger.historyCleared': 'Historia wyczyszczona',
     'autoTrigger.typeManual': 'Manualny',
     'autoTrigger.typeAuto': 'Automatycznie',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Tryb',
     'autoTrigger.modelsLabel': 'Modele',
@@ -301,6 +305,23 @@ export const pl = {
     'autoTrigger.testing': 'Testing...',
     'autoTrigger.testingPleaseWait': 'Testing... Please wait',
     'autoTrigger.runTest': 'Run Test',
+    'autoTrigger.wakeOnReset': 'Wake on Quota Reset',
+    'autoTrigger.wakeOnResetHint': 'Automatically trigger a wake-up when quota is detected to be fully restored.',
+    'autoTrigger.customPrompt': 'Custom Wake Word',
+    'autoTrigger.customPromptPlaceholder': 'Default: hi',
+    'autoTrigger.customPromptHint': 'Message sent to AI for wake-up, leave empty to use default "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Zaplanowane: uruchamia o ustawionych godzinach/odstępach.\n2. Crontab: definiuje czas wyzwalania wyrażeniem.\n3. Reset limitu: uruchamia raz, gdy limit zostanie w pełni przywrócony.',
+
+
     'time.today': 'Dzisiaj',
     'time.tomorrow': 'Jutro',
     'time.sunday': 'Niedziela',

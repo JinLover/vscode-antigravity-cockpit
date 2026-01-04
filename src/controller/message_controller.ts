@@ -401,7 +401,9 @@ export class MessageController {
                         const testModels = Array.isArray(rawModels)
                             ? rawModels.filter((model): model is string => typeof model === 'string' && model.length > 0)
                             : undefined;
-                        const result = await autoTriggerController.triggerNow(testModels);
+                        // 获取自定义唤醒词
+                        const customPrompt = (message as { customPrompt?: string }).customPrompt;
+                        const result = await autoTriggerController.triggerNow(testModels, customPrompt);
                         const state = await autoTriggerController.getState();
                         this.hud.sendMessage({
                             type: 'autoTriggerState',

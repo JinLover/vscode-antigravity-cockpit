@@ -187,6 +187,7 @@ export const zhTW = {
 
     // 錯誤訊息
     'error.invalidResponse': '伺服器回應無效: {details}',
+    'error.serverError': 'Antigravity 錯誤: {message}',
 
     // QuickPick 模式
     'quickpick.placeholder': '點擊模型固定狀態列 | 右上角操作：重新整理、分組、日誌、設定、切換 Webview',
@@ -230,6 +231,7 @@ export const zhTW = {
     // Footer
     'footer.enjoyingThis': '覺得好用？給個 ⭐ 支持一下！',
     'footer.feedback': '回饋',
+    'footer.star': '⭐ 星標',
     'footer.donate': '贊助',
 
     // Auto Trigger
@@ -291,6 +293,9 @@ export const zhTW = {
     'autoTrigger.historyCleared': '觸發歷史已清空',
     'autoTrigger.typeManual': '手動',
     'autoTrigger.typeAuto': '自動',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': '狀態',
     'autoTrigger.modeLabel': '模式',
     'autoTrigger.modelsLabel': '模型',
@@ -302,6 +307,23 @@ export const zhTW = {
     'autoTrigger.testing': '測試中...',
     'autoTrigger.testingPleaseWait': '正在測試，請稍候...',
     'autoTrigger.runTest': '開始測試',
+    'autoTrigger.wakeOnReset': '配額重置時自動喚醒',
+    'autoTrigger.wakeOnResetHint': '當偵測到配額恢復滿額時，自動觸發一次喚醒請求。',
+    'autoTrigger.customPrompt': '自訂喚醒詞',
+    'autoTrigger.customPromptPlaceholder': '預設: hi',
+    'autoTrigger.customPromptHint': '發送給 AI 的喚醒訊息，留空使用預設值 "hi"。',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. 定時觸發：按設定時間/週期喚醒。\n2. Crontab：用表達式定義觸發時間。\n3. 配額重置自動喚醒：配額恢復滿額時喚醒一次。',
+
+
     'time.today': '今天',
     'time.tomorrow': '明天',
     'time.sunday': '週日',

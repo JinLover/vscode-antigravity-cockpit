@@ -187,6 +187,7 @@ export const cs = {
 
     // Chybové Zprávy
     'error.invalidResponse': 'Neplatná odpověď serveru: {details}',
+    'error.serverError': 'Chyba Antigravity: {message}',
 
     // Režim QuickPick
     'quickpick.placeholder': 'Klikněte na model pro připnutí | Vpravo nahoře: Obnovit, Skupina, Logy, Nastavení, Webview',
@@ -290,6 +291,9 @@ export const cs = {
     'autoTrigger.historyCleared': 'Historie vymazána',
     'autoTrigger.typeManual': 'Ruční',
     'autoTrigger.typeAuto': 'Automaticky',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Režim',
     'autoTrigger.modelsLabel': 'Modely',
@@ -301,6 +305,23 @@ export const cs = {
     'autoTrigger.testing': 'Testing...',
     'autoTrigger.testingPleaseWait': 'Testing... Please wait',
     'autoTrigger.runTest': 'Run Test',
+    'autoTrigger.wakeOnReset': 'Wake on Quota Reset',
+    'autoTrigger.wakeOnResetHint': 'Automatically trigger a wake-up when quota is detected to be fully restored.',
+    'autoTrigger.customPrompt': 'Custom Wake Word',
+    'autoTrigger.customPromptPlaceholder': 'Default: hi',
+    'autoTrigger.customPromptHint': 'Message sent to AI for wake-up, leave empty to use default "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Plánované: spouští v nastavených časech/intervalech.\n2. Crontab: čas spouštění určí výrazem.\n3. Reset kvóty: spustí jednou, když se kvóta plně obnoví.',
+
+
     'time.today': 'Dnes',
     'time.tomorrow': 'Zítra',
     'time.sunday': 'Neděle',

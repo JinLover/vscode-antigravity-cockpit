@@ -187,6 +187,7 @@ export const ptBR = {
 
     // Mensagens de Erro
     'error.invalidResponse': 'Resposta do servidor inválida: {details}',
+    'error.serverError': 'Erro do Antigravity: {message}',
 
     // Modo QuickPick
     'quickpick.placeholder': 'Clique no modelo para fixar | Superior direito: Atualizar, Grupo, Logs, Config, Webview',
@@ -290,6 +291,9 @@ export const ptBR = {
     'autoTrigger.historyCleared': 'Histórico limpo',
     'autoTrigger.typeManual': 'Manual',
     'autoTrigger.typeAuto': 'Automático',
+    'autoTrigger.typeAutoScheduled': 'Auto - Scheduled',
+    'autoTrigger.typeAutoCrontab': 'Auto - Crontab',
+    'autoTrigger.typeAutoQuotaReset': 'Auto - Quota Reset',
     'autoTrigger.statusLabel': 'Status',
     'autoTrigger.modeLabel': 'Modo',
     'autoTrigger.modelsLabel': 'Modelos',
@@ -301,6 +305,23 @@ export const ptBR = {
     'autoTrigger.testing': 'Testing...',
     'autoTrigger.testingPleaseWait': 'Testing... Please wait',
     'autoTrigger.runTest': 'Run Test',
+    'autoTrigger.wakeOnReset': 'Wake on Quota Reset',
+    'autoTrigger.wakeOnResetHint': 'Automatically trigger a wake-up when quota is detected to be fully restored.',
+    'autoTrigger.customPrompt': 'Custom Wake Word',
+    'autoTrigger.customPromptPlaceholder': 'Default: hi',
+    'autoTrigger.customPromptHint': 'Message sent to AI for wake-up, leave empty to use default "hi".',
+    'autoTrigger.enableAutoWakeup': 'Enable Wake-up',
+    'autoTrigger.triggerMode': 'Wake-up Method',
+    'autoTrigger.modeScheduled': 'Scheduled Trigger',
+    'autoTrigger.modeScheduledHint': 'Trigger wake-ups on a schedule or interval.',
+    'autoTrigger.modeCrontab': 'Crontab',
+    'autoTrigger.modeCrontabHint': 'Define trigger times with a Crontab expression.',
+    'autoTrigger.modeQuotaReset': 'Auto Wake on Quota Reset',
+    'autoTrigger.modeQuotaResetHint': 'Trigger once when quota is detected as fully restored.',
+    'autoTrigger.crontabLabel': 'Crontab Expression',
+    'autoTrigger.triggerModeHint': '1. Agendado: ativa nos horários/intervalos definidos.\n2. Crontab: define o horário com uma expressão.\n3. Reset de cota: ativa uma vez quando a cota é totalmente restaurada.',
+
+
     'time.today': 'Hoje',
     'time.tomorrow': 'Amanhã',
     'time.sunday': 'Domingo',

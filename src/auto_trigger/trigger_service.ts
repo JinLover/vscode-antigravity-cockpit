@@ -27,12 +27,71 @@ class TriggerService {
     private readonly maxRecords = 40;  // 最多保留 40 条
     private readonly maxDays = 7;      // 最多保留 7 天
     private readonly storageKey = 'triggerHistory';
+    private readonly resetTriggerKey = 'lastResetTriggerTimestamps';
+    
+    /** 记录每个模型上次触发时对应的 resetAt，防止重复触发 */
+    private lastResetTriggerTimestamps: Map<string, string> = new Map();
 
     /**
      * 初始化：从存储加载历史记录
      */
     initialize(): void {
         this.loadHistory();
+        this.loadResetTriggerTimestamps();
+    }
+    
+    /**
+     * 加载重置触发时间戳记录
+     */
+    private loadResetTriggerTimestamps(): void {
+        const saved = credentialStorage.getState<Record<string, string>>(this.resetTriggerKey, {});
+        this.lastResetTriggerTimestamps = new Map(Object.entries(saved));
+        logger.debug(`[TriggerService] Loaded ${this.lastResetTriggerTimestamps.size} reset trigger timestamps`);
+    }
+    
+    /**
+     * 保存重置触发时间戳记录
+     */
+    private saveResetTriggerTimestamps(): void {
+        const obj = Object.fromEntries(this.lastResetTriggerTimestamps);
+        credentialStorage.saveState(this.resetTriggerKey, obj);
+    }
+    
+    /**
+     * 检查是否应该在配额重置时触发唤醒
+     * @param modelId 模型 ID
+     * @param resetAt 当前的重置时间点 (ISO 8601)
+     * @param remaining 当前剩余配额
+     * @param limit 配额上限
+     * @returns true 如果应该触发
+     */
+    shouldTriggerOnReset(modelId: string, resetAt: string, remaining: number, limit: number): boolean {
+        // 只有满额时才考虑触发
+        if (remaining < limit) {
+            logger.debug(`[TriggerService] shouldTriggerOnReset: ${modelId} not full (${remaining}/${limit})`);
+            return false;
+        }
+        
+        const lastTriggeredResetAt = this.lastResetTriggerTimestamps.get(modelId);
+        logger.debug(`[TriggerService] shouldTriggerOnReset: ${modelId} lastTriggeredResetAt=${lastTriggeredResetAt}, current resetAt=${resetAt}`);
+        
+        // 如果 resetAt 变化了（新的重置周期），则应该触发
+        if (resetAt !== lastTriggeredResetAt) {
+            logger.debug(`[TriggerService] shouldTriggerOnReset: ${modelId} resetAt changed, should trigger`);
+            return true;
+        }
+        
+        logger.debug(`[TriggerService] shouldTriggerOnReset: ${modelId} resetAt same, skip`);
+        return false;
+    }
+    
+    /**
+     * 记录已触发的重置时间点
+     */
+    markResetTriggered(modelId: string, resetAt: string): void {
+        this.lastResetTriggerTimestamps.set(modelId, resetAt);
+        this.saveResetTriggerTimestamps();
+        logger.info(`[TriggerService] Marked reset triggered for ${modelId} at ${resetAt}`);
     }
 
     /**
@@ -73,12 +132,17 @@ class TriggerService {
      * 发送一条简短的对话消息以触发配额计时
      * @param models 要触发的模型列表，如果不传则使用默认
      */
-    async trigger(models?: string[], triggerType: 'manual' | 'auto' = 'manual'): Promise<TriggerRecord> {
+    async trigger(
+        models?: string[],
+        triggerType: 'manual' | 'auto' = 'manual',
+        customPrompt?: string,
+        triggerSource?: 'manual' | 'scheduled' | 'crontab' | 'quota_reset',
+    ): Promise<TriggerRecord> {
         const startTime = Date.now();
         const triggerModels = (models && models.length > 0) ? models : ['gemini-3-flash'];
-        const promptText = 'hi';  // 发送的请求内容
+        const promptText = customPrompt || 'hi';  // 使用自定义或默认唤醒词
         
-        logger.info(`[TriggerService] Starting trigger (${triggerType}) for models: ${triggerModels.join(', ')}...`);
+        logger.info(`[TriggerService] Starting trigger (${triggerType}) for models: ${triggerModels.join(', ')}, prompt: "${promptText}"...`);
 
         try {
             // 1. 获取有效的 access_token
@@ -95,7 +159,7 @@ class TriggerService {
             const results = [];
             
             for (const model of triggerModels) {
-                const reply = await this.sendTriggerRequest(accessToken, projectId, model);
+                const reply = await this.sendTriggerRequest(accessToken, projectId, model, promptText);
                 results.push(`${model}: ${reply}`);
             }
 
@@ -107,6 +171,7 @@ class TriggerService {
                 message: results.join('\n'),
                 duration: Date.now() - startTime,
                 triggerType: triggerType,
+                triggerSource: triggerSource || (triggerType === 'manual' ? 'manual' : undefined),
             };
 
             this.addRecord(record);
@@ -124,6 +189,7 @@ class TriggerService {
                 message: err.message,
                 duration: Date.now() - startTime,
                 triggerType: triggerType,
+                triggerSource: triggerSource || (triggerType === 'manual' ? 'manual' : undefined),
             };
 
             this.addRecord(record);
@@ -249,9 +315,10 @@ class TriggerService {
     /**
      * 发送触发请求
      * 发送一条简短的消息来触发配额计时
+     * @param prompt 唤醒词，默认 "hi"
      * @returns AI 的简短回复
      */
-    private async sendTriggerRequest(accessToken: string, projectId: string, model: string): Promise<string> {
+    private async sendTriggerRequest(accessToken: string, projectId: string, model: string, prompt: string = 'hi'): Promise<string> {
         const sessionId = this.generateSessionId();
         const requestId = this.generateRequestId();
 
@@ -264,7 +331,7 @@ class TriggerService {
                 contents: [
                     {
                         role: 'user',
-                        parts: [{ text: 'hi' }],  // 最简短的消息
+                        parts: [{ text: prompt }],  // 使用自定义唤醒词
                     },
                 ],
                 session_id: sessionId,
