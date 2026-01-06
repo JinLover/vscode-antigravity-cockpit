@@ -240,6 +240,12 @@ export const cs = {
     'quotaSource.localInfoDesc': '→ Klikněte pro přepnutí na autorizované monitorování',
     'quotaSource.authorizedInfoTitle': 'Získává kvótu přes autorizovaná vzdálená API. Nezávisí na místním procesu, vhodné pro API relay nebo použití bez klienta Antigravity.',
 
+    // Nastavení jazyka
+    'language.title': 'Jazyk',
+    'language.auto': 'Automaticky (podle VS Code)',
+    'language.changed': 'Jazyk byl změněn. Panel se restartuje pro použití změn.',
+    'language.hint': 'Přepsat jazyk VS Code pro toto rozšíření',
+
     // Footer
     'footer.enjoyingThis': 'Líbí se vám? Dejte nám ⭐!',
     'footer.feedback': 'Zpětná vazba',

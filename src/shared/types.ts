@@ -330,6 +330,7 @@ export type WebviewMessageType =
     | 'quotaSourceGuideDismiss'
     | 'updateDisplayMode'
     | 'updateDataMasked'
+    | 'updateLanguage'
     | 'openCustomGrouping'
     | 'saveCustomGrouping'
     | 'previewAutoGroup'
@@ -381,6 +382,8 @@ export interface WebviewMessage {
     displayMode?: 'webview' | 'quickpick';
     /** 数据遮罩状态 (updateDataMasked) */
     dataMasked?: boolean;
+    /** 语言设置 (updateLanguage) */
+    language?: string;
     /** 自定义分组映射 (saveCustomGrouping) */
     customGroupMappings?: Record<string, string>;
     /** 自定义分组名称 (saveCustomGrouping) */

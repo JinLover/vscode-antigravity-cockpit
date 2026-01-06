@@ -240,6 +240,12 @@ export const de = {
     'quotaSource.localInfoDesc': '→ Klicken, um zur autorisierten Überwachung zu wechseln',
     'quotaSource.authorizedInfoTitle': 'Bezieht das Kontingent über autorisierte Remote-APIs. Unabhängig vom lokalen Prozess, geeignet für API-Relay oder Nutzung ohne den Antigravity-Client.',
 
+    // Spracheinstellungen
+    'language.title': 'Sprache',
+    'language.auto': 'Automatisch (wie VS Code)',
+    'language.changed': 'Sprache geändert. Panel wird neu gestartet, um Änderungen zu übernehmen.',
+    'language.hint': 'VS Code-Sprache für diese Erweiterung überschreiben',
+
     // Footer
     'footer.enjoyingThis': 'Gefällt es Ihnen? Geben Sie uns einen ⭐!',
     'footer.feedback': 'Feedback',

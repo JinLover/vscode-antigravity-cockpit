@@ -240,6 +240,12 @@ export const fr = {
     'quotaSource.localInfoDesc': '→ Cliquez pour passer au monitoring autorisé',
     'quotaSource.authorizedInfoTitle': 'Récupère le quota via des API distantes autorisées. Indépendant du processus local, adapté aux relais API ou aux usages sans le client Antigravity.',
 
+    // Paramètres de langue
+    'language.title': 'Langue',
+    'language.auto': 'Automatique (suivre VS Code)',
+    'language.changed': 'Langue changée. Le panneau va redémarrer pour appliquer.',
+    'language.hint': 'Remplacer la langue de VS Code pour cette extension',
+
     // Footer
     'footer.enjoyingThis': 'Vous aimez ? Donnez-nous une ⭐ !',
     'footer.feedback': 'Commentaires',

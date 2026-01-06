@@ -8,7 +8,7 @@ import { ProcessHunter } from './engine/hunter';
 import { ReactorCore } from './engine/reactor';
 import { logger } from './shared/log_service';
 import { configService, CockpitConfig } from './shared/config_service';
-import { t } from './shared/i18n';
+import { t, i18n } from './shared/i18n';
 import { CockpitHUD } from './view/hud';
 import { QuickPickView } from './view/quickpick_view';
 import { initErrorReporter, captureError, flushEvents } from './shared/error_reporter';
@@ -48,6 +48,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // 初始化日志
     logger.init();
     await configService.initialize(context);
+
+    // 应用保存的语言设置
+    const savedLanguage = configService.getConfig().language;
+    if (savedLanguage) {
+        i18n.applyLanguageSetting(savedLanguage);
+    }
 
     // 获取插件版本号
     const packageJson = await import('../package.json');

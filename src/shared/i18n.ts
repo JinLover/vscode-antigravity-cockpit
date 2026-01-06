@@ -23,6 +23,24 @@ export type SupportedLocale =
     | 'pl' 
     | 'cs';
 
+/** 语言显示名称映射 */
+export const localeDisplayNames: Record<SupportedLocale, string> = {
+    'en': 'English',
+    'zh-cn': '简体中文',
+    'zh-tw': '繁體中文',
+    'ja': '日本語',
+    'ko': '한국어',
+    'de': 'Deutsch',
+    'fr': 'Français',
+    'es': 'Español',
+    'pt-br': 'Português (Brasil)',
+    'ru': 'Русский',
+    'it': 'Italiano',
+    'tr': 'Türkçe',
+    'pl': 'Polski',
+    'cs': 'Čeština',
+};
+
 /** 翻译键值对 */
 interface TranslationMap {
     [key: string]: string;
@@ -72,13 +90,14 @@ const localeMapping: Record<string, SupportedLocale> = {
 /** i18n 服务类 */
 class I18nService {
     private currentLocale: SupportedLocale = 'en';
+    private manualLocale: string = 'auto'; // 用户手动设置的语言，'auto' 表示跟随 VS Code
 
     constructor() {
         this.detectLocale();
     }
 
     /**
-     * 检测当前语言环境
+     * 检测当前语言环境（基于 VS Code 设置）
      */
     private detectLocale(): void {
         const vscodeLocale = vscode.env.language.toLowerCase();
@@ -98,6 +117,35 @@ class I18nService {
         
         // 默认使用英文
         this.currentLocale = 'en';
+    }
+
+    /**
+     * 应用语言设置
+     * @param languageSetting 语言设置值，'auto' 跟随 VS Code，其他为具体语言代码
+     */
+    applyLanguageSetting(languageSetting: string): void {
+        this.manualLocale = languageSetting;
+        
+        if (languageSetting === 'auto') {
+            // 跟随 VS Code
+            this.detectLocale();
+        } else {
+            // 验证是否为支持的语言
+            const supportedLocales = Object.keys(translations) as SupportedLocale[];
+            if (supportedLocales.includes(languageSetting as SupportedLocale)) {
+                this.currentLocale = languageSetting as SupportedLocale;
+            } else {
+                // 不支持的语言，回退到 VS Code
+                this.detectLocale();
+            }
+        }
+    }
+
+    /**
+     * 获取当前手动设置的语言
+     */
+    getManualLocale(): string {
+        return this.manualLocale;
     }
 
     /**
@@ -148,6 +196,13 @@ class I18nService {
      */
     getSupportedLocales(): SupportedLocale[] {
         return Object.keys(translations) as SupportedLocale[];
+    }
+
+    /**
+     * 获取语言显示名称
+     */
+    getLocaleDisplayName(locale: SupportedLocale): string {
+        return localeDisplayNames[locale] || locale;
     }
 }
 

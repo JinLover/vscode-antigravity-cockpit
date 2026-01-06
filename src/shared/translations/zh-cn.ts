@@ -261,6 +261,12 @@ export const zhCN = {
     'quotaSource.guideLater': '稍后再说',
     'quotaSource.switchTimeout': '切换耗时较长，可稍后重试。',
 
+    // Language Settings
+    'language.title': '语言',
+    'language.auto': '自动（跟随 VS Code）',
+    'language.changed': '语言已更改，请重新打开面板以应用。',
+    'language.hint': '可覆盖 VS Code 语言设置，仅对本扩展生效',
+
     // Footer
     'footer.enjoyingThis': '觉得好用？给个 ⭐ 支持一下！',
     'footer.feedback': '反馈',

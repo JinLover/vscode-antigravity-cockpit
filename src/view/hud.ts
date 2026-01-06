@@ -9,7 +9,7 @@ import * as path from 'path';
 import { QuotaSnapshot, DashboardConfig, WebviewMessage } from '../shared/types';
 import { logger } from '../shared/log_service';
 import { configService } from '../shared/config_service';
-import { i18n, t } from '../shared/i18n';
+import { i18n, t, localeDisplayNames } from '../shared/i18n';
 
 /**
  * CockpitHUD 类
@@ -705,6 +705,18 @@ export class CockpitHUD {
                 <button id="close-settings-btn" class="close-btn">×</button>
             </div>
             <div class="modal-body">
+                <!-- 语言设置 -->
+                <div class="setting-item">
+                    <label for="language-select">🌐 ${t('language.title') || 'Language'}</label>
+                    <select id="language-select" class="setting-select">
+                        <option value="auto">${t('language.auto') || 'Auto (Follow VS Code)'}</option>
+                        ${this.generateLanguageOptions()}
+                    </select>
+                    <p class="setting-hint">${t('language.hint') || 'Override VS Code language for this extension'}</p>
+                </div>
+
+                <hr class="setting-divider">
+
                 <!-- Display Mode and View Mode moved to bottom -->
 
                 <!-- 状态栏样式选择 -->
@@ -906,6 +918,17 @@ export class CockpitHUD {
             nonce += possible.charAt(Math.floor(Math.random() * possible.length));
         }
         return nonce;
+    }
+
+    /**
+     * 生成语言选项 HTML
+     */
+    private generateLanguageOptions(): string {
+        const locales = i18n.getSupportedLocales();
+        return locales.map(locale => {
+            const displayName = localeDisplayNames[locale] || locale;
+            return `<option value="${locale}">${displayName}</option>`;
+        }).join('\n                        ');
     }
 }
 

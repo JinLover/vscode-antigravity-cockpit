@@ -240,6 +240,12 @@ export const zhTW = {
     'quotaSource.localInfoDesc': '→',
     'quotaSource.authorizedInfoTitle': '透過授權存取遠端介面取得配額，不依賴本地進程，適用於 API 中轉或無需啟動 Antigravity 客戶端的情境。',
 
+    // Language Settings
+    'language.title': '語言',
+    'language.auto': '自動（跟隨 VS Code）',
+    'language.changed': '語言已更改，請重新開啟面板以套用。',
+    'language.hint': '可覆蓋 VS Code 語言設定，僅對本擴充功能生效',
+
     // Footer
     'footer.enjoyingThis': '覺得好用？給個 ⭐ 支持一下！',
     'footer.feedback': '回饋',

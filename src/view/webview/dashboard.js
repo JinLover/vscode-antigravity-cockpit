@@ -320,6 +320,9 @@
                 };
             }
 
+            // 初始化语言选择器
+            initLanguageSelector();
+
             // 初始化状态栏格式选择器
             initStatusBarFormatSelector();
             
@@ -350,6 +353,33 @@
                 command: 'updateStatusBarFormat',
                 statusBarFormat: format
             });
+        });
+    }
+
+    /**
+     * 初始化语言选择器
+     */
+    function initLanguageSelector() {
+        const languageSelect = document.getElementById('language-select');
+        if (!languageSelect) return;
+        
+        // 设置当前语言
+        const currentLanguage = currentConfig.language || 'auto';
+        languageSelect.value = currentLanguage;
+        
+        // 绑定 change 事件
+        languageSelect.onchange = null;
+        languageSelect.addEventListener('change', () => {
+            const newLanguage = languageSelect.value;
+            
+            // 发送消息到扩展
+            vscode.postMessage({
+                command: 'updateLanguage',
+                language: newLanguage
+            });
+            
+            // 显示提示需要重新打开面板
+            showToast(i18n['language.changed'] || 'Language changed. Reopen panel to apply.', 'info');
         });
     }
     

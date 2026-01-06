@@ -240,6 +240,12 @@ export const it = {
     'quotaSource.localInfoDesc': '→ Clicca per passare al monitoraggio autorizzato',
     'quotaSource.authorizedInfoTitle': 'Recupera la quota tramite API remote autorizzate. Non dipende dal processo locale, ideale per relay API o uso senza il client Antigravity.',
 
+    // Impostazioni lingua
+    'language.title': 'Lingua',
+    'language.auto': 'Automatico (segui VS Code)',
+    'language.changed': 'Lingua cambiata. Il pannello verrà riavviato per applicare le modifiche.',
+    'language.hint': 'Ignora la lingua di VS Code per questa estensione',
+
     // Footer
     'footer.enjoyingThis': 'Ti piace? Dacci una ⭐!',
     'footer.feedback': 'Feedback',

@@ -240,6 +240,12 @@ export const ptBR = {
     'quotaSource.localInfoDesc': '→ Clique para mudar para monitoramento autorizado',
     'quotaSource.authorizedInfoTitle': 'Busca a cota via APIs remotas autorizadas. Não depende do processo local, ideal para relay de API ou uso sem o cliente Antigravity.',
 
+    // Configurações de idioma
+    'language.title': 'Idioma',
+    'language.auto': 'Automático (seguir VS Code)',
+    'language.changed': 'Idioma alterado. O painel será reiniciado para aplicar.',
+    'language.hint': 'Substituir o idioma do VS Code para esta extensão',
+
     // Footer
     'footer.enjoyingThis': 'Gostando? Dê-nos uma ⭐!',
     'footer.feedback': 'Feedback',

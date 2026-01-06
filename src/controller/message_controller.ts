@@ -4,7 +4,7 @@ import { CockpitHUD } from '../view/hud';
 import { ReactorCore } from '../engine/reactor';
 import { configService } from '../shared/config_service';
 import { logger } from '../shared/log_service';
-import { t } from '../shared/i18n';
+import { t, i18n } from '../shared/i18n';
 import { WebviewMessage } from '../shared/types';
 import { TIMING } from '../shared/constants';
 import { autoTriggerController } from '../auto_trigger/controller';
@@ -371,6 +371,23 @@ export class MessageController {
                         logger.info(`User changed data masking to: ${message.dataMasked}`);
                         await configService.updateConfig('dataMasked', message.dataMasked);
                         this.reactor.reprocess();
+                    }
+                    break;
+
+                case 'updateLanguage':
+                    // 更新语言设置
+                    if (message.language !== undefined) {
+                        const newLanguage = String(message.language);
+                        logger.info(`User changed language to: ${newLanguage}`);
+                        await configService.updateConfig('language', newLanguage);
+                        // 应用新语言设置
+                        i18n.applyLanguageSetting(newLanguage);
+                        // 关闭当前面板并重新打开
+                        this.hud.dispose();
+                        // 短暂延迟后重新打开面板，确保旧面板完全关闭
+                        setTimeout(() => {
+                            vscode.commands.executeCommand('agCockpit.open');
+                        }, 100);
                     }
                     break;
 

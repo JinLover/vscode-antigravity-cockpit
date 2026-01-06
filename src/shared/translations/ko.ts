@@ -240,6 +240,12 @@ export const ko = {
     'quotaSource.localInfoDesc': '→',
     'quotaSource.authorizedInfoTitle': '인증된 원격 API에서 할당량을 가져옵니다. 로컬 프로세스에 의존하지 않으며 API 중계나 Antigravity 클라이언트 없이 사용하는 경우에 적합합니다.',
 
+    // 언어 설정
+    'language.title': '언어',
+    'language.auto': '자동 (VS Code 설정값)',
+    'language.changed': '언어가 변경되었습니다. 적용을 위해 패널이 재시작됩니다.',
+    'language.hint': '이 확장 프로그램에 대해 VS Code 언어 설정을 덮어씁니다',
+
     // Footer
     'footer.enjoyingThis': '마음에 드시나요? ⭐를 눌러주세요!',
     'footer.feedback': '피드백',

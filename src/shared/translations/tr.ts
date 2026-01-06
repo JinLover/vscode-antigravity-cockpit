@@ -240,6 +240,12 @@ export const tr = {
     'quotaSource.localInfoDesc': '→ Yetkili izlemeye geçmek için tıklayın',
     'quotaSource.authorizedInfoTitle': 'Yetkili uzak API\'ler üzerinden kota alır. Yerel sürece bağlı değildir, API rölesi veya Antigravity istemcisi olmadan kullanım için uygundur.',
 
+    // Dil Ayarları
+    'language.title': 'Dil',
+    'language.auto': 'Otomatik (VS Code\'u takip et)',
+    'language.changed': 'Dil değiştirildi. Uygulamak için panel yeniden başlatılacak.',
+    'language.hint': 'Bu uzantı için VS Code dilini geçersiz kıl',
+
     // Footer
     'footer.enjoyingThis': 'Beğendiniz mi? Bize bir ⭐ verin!',
     'footer.feedback': 'Geri Bildirim',

@@ -51,6 +51,8 @@ export interface CockpitConfig {
     profileHidden: boolean;
     /** 是否遮罩敏感数据 */
     dataMasked: boolean;
+    /** 语言设置（'auto' 跟随 VS Code，或具体语言代码） */
+    language: string;
 }
 
 /** 配置服务类 */
@@ -69,6 +71,7 @@ class ConfigService {
         'groupingCustomNames',
         'visibleModels',
         'quotaSource',  // 使用 globalState 存储，避免 VS Code 配置 API 写入失败问题
+        'language',     // 语言设置使用 globalState 存储
     ]);
     private static readonly stateKeyPrefix = 'state';
     private static readonly migrationKey = `${ConfigService.stateKeyPrefix}.migratedToGlobalState.v171`;
@@ -126,6 +129,7 @@ class ConfigService {
             displayMode: config.get<string>(CONFIG_KEYS.DISPLAY_MODE, DISPLAY_MODE.WEBVIEW),
             profileHidden: config.get<boolean>(CONFIG_KEYS.PROFILE_HIDDEN, false),
             dataMasked: config.get<boolean>(CONFIG_KEYS.DATA_MASKED, false),
+            language: this.getStateValue<string>(CONFIG_KEYS.LANGUAGE, 'auto'),
         };
     }
 

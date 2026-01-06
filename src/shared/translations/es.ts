@@ -240,6 +240,12 @@ export const es = {
     'quotaSource.localInfoDesc': '→ Haz clic para cambiar al monitoreo autorizado',
     'quotaSource.authorizedInfoTitle': 'Obtiene la cuota mediante APIs remotas autorizadas. No depende del proceso local y es ideal para relé API o uso sin el cliente de Antigravity.',
 
+    // Ajustes de idioma
+    'language.title': 'Idioma',
+    'language.auto': 'Automático (seguir VS Code)',
+    'language.changed': 'Idioma cambiado. Panel reiniciado para aplicar.',
+    'language.hint': 'Anular el idioma de VS Code para esta extensión',
+
     // Footer
     'footer.enjoyingThis': '¿Te gusta? ¡Danos una ⭐!',
     'footer.feedback': 'Comentarios',

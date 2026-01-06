@@ -240,6 +240,12 @@ export const ru = {
     'quotaSource.localInfoDesc': '→ Нажмите, чтобы переключиться на авторизованный мониторинг',
     'quotaSource.authorizedInfoTitle': 'Получает квоту через авторизованные удаленные API. Не зависит от локального процесса, подходит для API‑ретрансляции или использования без клиента Antigravity.',
 
+    // Настройки языка
+    'language.title': 'Язык',
+    'language.auto': 'Авто (как в VS Code)',
+    'language.changed': 'Язык изменён. Панель будет перезапущена для применения изменений.',
+    'language.hint': 'Переопределить язык VS Code для этого расширения',
+
     // Footer
     'footer.enjoyingThis': 'Нравится? Поставьте нам ⭐!',
     'footer.feedback': 'Обратная связь',

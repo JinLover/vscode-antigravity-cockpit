@@ -77,6 +77,7 @@ export const CONFIG_KEYS = {
     DISPLAY_MODE: 'displayMode',
     PROFILE_HIDDEN: 'profileHidden',
     DATA_MASKED: 'dataMasked',
+    LANGUAGE: 'language',
 } as const;
 
 /** 状态栏显示格式 */

@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.2]
+
+### Added
+- **Manual Language Setting**: Added a manual language selector in the Dashboard settings to override the default VS Code language.
+
 ## [1.7.1]
 
 ### Changed

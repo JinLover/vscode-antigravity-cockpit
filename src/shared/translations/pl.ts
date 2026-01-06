@@ -240,6 +240,12 @@ export const pl = {
     'quotaSource.localInfoDesc': '→ Kliknij, aby przełączyć na monitorowanie autoryzowane',
     'quotaSource.authorizedInfoTitle': 'Pobiera limit przez autoryzowane zdalne API. Niezależne od procesu lokalnego, idealne do użycia bez klienta Antigravity lub jako przekaźnik API.',
 
+    // Ustawienia języka
+    'language.title': 'Język',
+    'language.auto': 'Automatycznie (zgodnie z VS Code)',
+    'language.changed': 'Zmieniono język. Panel zostanie zrestartowany, aby zastosować zmiany.',
+    'language.hint': 'Zastąp język VS Code dla tego rozszerzenia',
+
     // Footer
     'footer.enjoyingThis': 'Podoba się? Daj nam ⭐!',
     'footer.feedback': 'Opinie',

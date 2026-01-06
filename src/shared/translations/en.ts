@@ -261,6 +261,12 @@ export const en = {
     'quotaSource.guideLater': 'Later',
     'quotaSource.switchTimeout': 'Switch is taking longer than expected. You can try again.',
 
+    // Language Settings
+    'language.title': 'Language',
+    'language.auto': 'Auto (Follow VS Code)',
+    'language.changed': 'Language changed. Reopen panel to apply.',
+    'language.hint': 'Override VS Code language for this extension',
+
     // Footer
     'footer.enjoyingThis': 'Enjoying this? Give us a ⭐!',
     'footer.feedback': 'Feedback',

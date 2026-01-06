@@ -240,6 +240,12 @@ export const ja = {
     'quotaSource.localInfoDesc': '→',
     'quotaSource.authorizedInfoTitle': '認可した遠端 API から配額を取得します。ローカルプロセスに依存せず、API 中継や Antigravity クライアント不要の用途に適しています。',
 
+    // Language Settings
+    'language.title': '言語',
+    'language.auto': '自動（VS Codeに従う）',
+    'language.changed': '言語が変更されました。パネルを再度開いて適用してください。',
+    'language.hint': 'この拡張機能のVS Code言語設定を上書きします',
+
     // Footer
     'footer.enjoyingThis': 'お気に入りですか？⭐をお願いします！',
     'footer.feedback': 'フィードバック',
