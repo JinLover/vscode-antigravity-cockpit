@@ -10,6 +10,7 @@ import { t } from '../shared/i18n';
 import { QuotaSnapshot } from '../shared/types';
 import { QUOTA_THRESHOLDS, TIMING } from '../shared/constants';
 import { credentialStorage } from '../auto_trigger';
+import { announcementService } from '../announcement';
 
 export class TelemetryController {
     private notifiedModels: Set<string> = new Set();
@@ -102,6 +103,18 @@ export class TelemetryController {
 
             // 更新状态栏
             this.statusBar.update(snapshot, config);
+
+            // 同步刷新公告状态（让面板打开时能自动接收新公告弹框）
+            try {
+                const annState = await announcementService.getState();
+                this.hud.sendMessage({
+                    type: 'announcementState',
+                    data: annState,
+                });
+            } catch (error) {
+                // 公告刷新失败不影响主流程
+                logger.debug(`[TelemetryController] Announcement refresh failed: ${error}`);
+            }
         });
 
         this.reactor.onMalfunction(async (err: Error) => {
@@ -156,7 +169,7 @@ export class TelemetryController {
 
         const useGroups = config.groupingEnabled && Array.isArray(snapshot.groups) && snapshot.groups.length > 0;
         if (useGroups) {
-            for (const group of snapshot.groups) {
+            for (const group of snapshot.groups!) {
                 const pct = group.remainingPercentage ?? 0;
                 const keyBase = `group:${group.groupId}`;
                 const notifyKey = `${keyBase}-${pct <= criticalThreshold ? 'critical' : 'warning'}`;

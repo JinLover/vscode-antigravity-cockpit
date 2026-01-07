@@ -12,7 +12,6 @@ import { i18n } from '../shared/i18n';
 const ANNOUNCEMENT_URL_PROD = 'https://gist.githubusercontent.com/jlcodes99/49facf261e9479a5b50fb81e4ab0afad/raw/announcements.json';
 const ANNOUNCEMENT_URL_DEV = 'https://gist.githubusercontent.com/jlcodes99/5618ef028eeaa7bdf6c45eca176f2a0a/raw/announcements_dev.json';
 
-// 存储键
 const READ_IDS_KEY = 'announcement_read_ids';
 const CACHE_KEY = 'announcement_cache';
 const CACHE_TTL = 3600 * 1000; // 1 小时缓存

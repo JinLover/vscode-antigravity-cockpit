@@ -2357,7 +2357,7 @@
         popupAnnouncement: null,
     };
     let currentPopupAnnouncement = null;
-    let hasAutoPopupChecked = false;
+    let shownPopupIds = new Set();  // 记录已弹过的公告 ID，避免重复弹框
 
     function updateAnnouncementBadge() {
         const badge = document.getElementById('announcement-badge');
@@ -2490,7 +2490,7 @@
         if (popupContent) {
             let contentHtml = `<div class="announcement-text">${escapeHtml(ann.content).replace(/\n/g, '<br>')}</div>`;
             
-            // 如果有图片，渲染图片区域
+            // 如果有图片，渲染图片区域（带骨架屏占位符）
             if (ann.images && ann.images.length > 0) {
                 contentHtml += '<div class="announcement-images">';
                 for (const img of ann.images) {
@@ -2500,7 +2500,8 @@
                                  alt="${escapeHtml(img.alt || img.label || '')}" 
                                  class="announcement-image"
                                  data-preview-url="${escapeHtml(img.url)}"
-                                 title="点击放大" />
+                                 title="${i18n['announcement.clickToEnlarge'] || 'Click to enlarge'}" />
+                            <div class="image-skeleton"></div>
                             ${img.label ? `<div class="announcement-image-label">${escapeHtml(img.label)}</div>` : ''}
                         </div>
                     `;
@@ -2510,8 +2511,31 @@
             
             popupContent.innerHTML = contentHtml;
             
-            // 绑定图片点击事件
+            // 绑定图片加载事件
             popupContent.querySelectorAll('.announcement-image').forEach(imgEl => {
+                // 图片加载完成
+                imgEl.addEventListener('load', () => {
+                    imgEl.classList.add('loaded');
+                });
+                
+                // 图片加载失败
+                imgEl.addEventListener('error', () => {
+                    const item = imgEl.closest('.announcement-image-item');
+                    if (item) {
+                        const skeleton = item.querySelector('.image-skeleton');
+                        if (skeleton) skeleton.remove();
+                        imgEl.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'image-load-error';
+                        errorDiv.innerHTML = `
+                            <span class="icon">🖼️</span>
+                            <span>${i18n['announcement.imageLoadFailed'] || 'Image failed to load'}</span>
+                        `;
+                        item.insertBefore(errorDiv, item.firstChild);
+                    }
+                });
+                
+                // 点击放大
                 imgEl.addEventListener('click', () => {
                     const url = imgEl.getAttribute('data-preview-url');
                     if (url) showImagePreview(url);
@@ -2642,10 +2666,10 @@
         announcementState = state;
         updateAnnouncementBadge();
         renderAnnouncementList();
-        
-        // 检查是否需要弹出公告
-        if (!hasAutoPopupChecked && state.popupAnnouncement) {
-            hasAutoPopupChecked = true;
+
+        // 检查是否需要弹出公告（只弹未弹过的）
+        if (state.popupAnnouncement && !shownPopupIds.has(state.popupAnnouncement.id)) {
+            shownPopupIds.add(state.popupAnnouncement.id);
             // 延迟弹出，等待页面渲染完成
             setTimeout(() => {
                 showAnnouncementPopup(state.popupAnnouncement);

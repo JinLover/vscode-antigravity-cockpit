@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.23]
+
+### Added
+- **Announcements**: Added image skeleton loaders and an error fallback UI for announcement images.
+
+### Changed
+- **Announcements**: Popup announcements now only show once per announcement ID.
+- **Telemetry**: The dashboard now refreshes announcement state alongside snapshot updates to surface new announcements promptly.
+
+### Removed
+- **Debug**: Removed the development-only "Reset Extension State" command.
+
 ## [1.7.22]
 
 ### Added
