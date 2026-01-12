@@ -23,6 +23,7 @@ import { AntigravityError, isServerError } from '../shared/errors';
 import { cloudCodeClient, CloudCodeAuthError, CloudCodeRequestError } from '../shared/cloudcode_client';
 import { autoTriggerController } from '../auto_trigger/controller';
 import { oauthService, credentialStorage } from '../auto_trigger';
+import { antigravityToolsSyncService } from '../antigravityTools_sync';
 
 const AUTH_RECOMMENDED_LABELS = [
     'Claude Opus 4.5 (Thinking)',
@@ -409,9 +410,31 @@ export class ReactorCore {
     private async syncTelemetryCore(): Promise<void> {
         const config = configService.getConfig();
         if (config.quotaSource === 'authorized') {
+            const autoSwitchEnabled = configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true);
+            if (autoSwitchEnabled) {
+                const toolsMatchedEmail = await this.resolveToolsAuthorizedEmail();
+                if (toolsMatchedEmail) {
+                    await this.ensureActiveAccount(toolsMatchedEmail);
+                } else {
+                    const localSnapshot = await this.tryFetchLocalTelemetry();
+                    const localEmail = localSnapshot?.userInfo?.email;
+                    const localEmailValid = Boolean(
+                        localEmail && localEmail.trim() && localEmail !== 'N/A' && localEmail.includes('@'),
+                    );
+                    if (localEmail && localEmailValid) {
+                        const localMatchedEmail = await this.resolveAuthorizedEmail(localEmail);
+                        if (localMatchedEmail) {
+                            await this.ensureActiveAccount(localMatchedEmail);
+                        }
+                    }
+                }
+            }
+
             try {
                 const hasAuth = await credentialStorage.hasValidCredential();
                 if (!hasAuth) {
+                    this.lastAuthorizedModels = undefined;
+                    this.lastAuthorizedFetchedAt = undefined;
                     const telemetry = ReactorCore.createOfflineSnapshot();
                     this.publishTelemetry(telemetry, 'authorized');
                     return;
@@ -459,26 +482,79 @@ export class ReactorCore {
             }
         }
 
-        let raw: ServerUserStatusResponse;
         try {
-            raw = await this.transmit<ServerUserStatusResponse>(
-                API_ENDPOINTS.GET_USER_STATUS,
-                {
-                    metadata: {
-                        ideName: 'antigravity',
-                        extensionName: 'antigravity',
-                        locale: 'en',
-                    },
-                },
-            );
+            const telemetry = await this.fetchLocalTelemetry();
+            this.publishTelemetry(telemetry, 'local');
         } catch (error) {
             throw this.wrapSyncError(error, 'local');
         }
+    }
 
+    private async fetchLocalTelemetry(): Promise<QuotaSnapshot> {
+        const raw = await this.transmit<ServerUserStatusResponse>(
+            API_ENDPOINTS.GET_USER_STATUS,
+            {
+                metadata: {
+                    ideName: 'antigravity',
+                    extensionName: 'antigravity',
+                    locale: 'en',
+                },
+            },
+        );
         this.lastRawResponse = raw; // 缓存原始响应
         this.lastLocalFetchedAt = Date.now();
-        const telemetry = this.decodeSignal(raw);
-        this.publishTelemetry(telemetry, 'local');
+        return this.decodeSignal(raw);
+    }
+
+    private async tryFetchLocalTelemetry(): Promise<QuotaSnapshot | null> {
+        if (!this.port || !this.token) {
+            return null;
+        }
+        try {
+            return await this.fetchLocalTelemetry();
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.debug(`[LocalQuota] Local fetch failed: ${err.message}`);
+            return null;
+        }
+    }
+
+    private async resolveToolsAuthorizedEmail(): Promise<string | null> {
+        try {
+            const detection = await antigravityToolsSyncService.detect();
+            if (!detection?.currentEmail) {
+                return null;
+            }
+            return await this.resolveAuthorizedEmail(detection.currentEmail);
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.debug(`[AuthorizedQuota] Tools detection failed: ${err.message}`);
+            return null;
+        }
+    }
+
+    private async resolveAuthorizedEmail(localEmail: string): Promise<string | null> {
+        const trimmed = localEmail.trim();
+        if (!trimmed || trimmed === 'N/A' || !trimmed.includes('@')) {
+            return null;
+        }
+        const accounts = await credentialStorage.getAllCredentials();
+        const target = trimmed.toLowerCase();
+        for (const email of Object.keys(accounts)) {
+            if (email.toLowerCase() === target) {
+                return email;
+            }
+        }
+        return null;
+    }
+
+    private async ensureActiveAccount(email: string): Promise<void> {
+        const activeAccount = await credentialStorage.getActiveAccount();
+        if (activeAccount && activeAccount.toLowerCase() === email.toLowerCase()) {
+            return;
+        }
+        await credentialStorage.setActiveAccount(email);
+        logger.info(`[AuthorizedQuota] Auto-switched active account to ${email}`);
     }
 
     /**
@@ -539,6 +615,7 @@ export class ReactorCore {
             throw new Error(t('quotaSource.authorizedMissing') || 'Authorize auto wake-up first');
         }
         const accessToken = tokenResult.token;
+        const activeAccount = await credentialStorage.getActiveAccount();
 
         let projectId: string | undefined;
         const credential = await credentialStorage.getCredential();
@@ -564,9 +641,23 @@ export class ReactorCore {
         }
 
         const models = await this.fetchAuthorizedQuotaModels(accessToken, projectId);
+        const activeAccountAfter = await credentialStorage.getActiveAccount();
+        if (this.normalizeAccount(activeAccount) !== this.normalizeAccount(activeAccountAfter)) {
+            logger.info('[AuthorizedQuota] Active account changed during fetch, dropping stale result');
+            this.lastAuthorizedModels = undefined;
+            return ReactorCore.createOfflineSnapshot();
+        }
         this.lastAuthorizedModels = models;
         await this.ensureAuthorizedVisibleModels(models);
         return this.buildSnapshot(models);
+    }
+
+    private normalizeAccount(value: string | null | undefined): string | null {
+        if (!value) {
+            return null;
+        }
+        const normalized = value.trim().toLowerCase();
+        return normalized ? normalized : null;
     }
 
     private async fetchAuthorizedQuotaModels(accessToken: string, projectId?: string): Promise<ModelQuotaInfo[]> {

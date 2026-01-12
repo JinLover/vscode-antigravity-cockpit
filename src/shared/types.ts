@@ -342,6 +342,8 @@ export type WebviewMessageType =
     | 'autoTrigger.removeAccount'
     | 'autoTrigger.switchAccount'
     | 'autoTrigger.reauthorizeAccount'
+    | 'autoTrigger.importLocal'
+    | 'autoTrigger.importLocalConfirm'
     | 'autoTrigger.saveSchedule'
     | 'autoTrigger.test'
     | 'autoTrigger.validateCrontab'
@@ -359,6 +361,7 @@ export type WebviewMessageType =
     | 'antigravityToolsSync.importAuto'
     | 'antigravityToolsSync.importConfirm'
     | 'antigravityToolsSync.toggle'
+    | 'antigravityToolsSync.toggleAutoSwitch'
     // General
     | 'openUrl'
     | 'executeCommand'
@@ -429,6 +432,8 @@ export interface WebviewMessage {
     switchOnly?: boolean;
     /** 目标切换邮箱 (antigravityToolsSync.importConfirm) */
     targetEmail?: string;
+    /** 是否覆盖已有账号 (autoTrigger.importLocalConfirm) */
+    overwrite?: boolean;
 }
 
 /** 调度配置 */
@@ -451,6 +456,13 @@ export interface DashboardAuthorizationStatus {
     isAuthorized: boolean;
     email?: string;
     expiresAt?: string;
+    accounts?: Array<{
+        email: string;
+        isActive: boolean;
+        expiresAt?: string;
+        isInvalid?: boolean;
+    }>;
+    activeAccount?: string;
 }
 
 /** Dashboard 配置 */
@@ -507,6 +519,8 @@ export interface DashboardConfig {
     language?: string;
     /** 是否开启 AntigravityTools 同步（来自 globalState） */
     antigravityToolsSyncEnabled?: boolean;
+    /** 是否开启 AntigravityTools 自动切换（来自 globalState） */
+    antigravityToolsAutoSwitchEnabled?: boolean;
 }
 
 /** 状态栏更新数据 */

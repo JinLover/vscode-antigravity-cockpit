@@ -124,23 +124,24 @@ export class WindowsStrategy implements PlatformStrategy {
     }
 
     getPortListCommand(pid: number): string {
-        return `chcp 65001 >nul && netstat -ano | findstr "${pid}" | findstr "LISTENING"`;
+        const utf8Header = '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; ';
+        return `chcp 65001 >nul && powershell -NoProfile -NonInteractive -Command "${utf8Header}$ports = Get-NetTCPConnection -State Listen -OwningProcess ${pid} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort; if ($ports) { $ports | Sort-Object -Unique }"`;
     }
 
     parseListeningPorts(stdout: string): number[] {
-        const portRegex = /(?:127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):(\d+)\s+\S+\s+LISTENING/gi;
-        const ports: number[] = [];
-        let match;
+        const ports = new Set<number>();
+        const matches = stdout.match(/\b\d{1,5}\b/g) || [];
 
-        while ((match = portRegex.exec(stdout)) !== null) {
-            const port = parseInt(match[1], 10);
-            if (!ports.includes(port)) {
-                ports.push(port);
+        for (const value of matches) {
+            const port = parseInt(value, 10);
+            if (port > 0 && port <= 65535) {
+                ports.add(port);
             }
         }
 
-        logger.debug(`[WindowsStrategy] Parsed ${ports.length} ports: ${ports.join(', ')}`);
-        return ports.sort((a, b) => a - b);
+        const result = Array.from(ports).sort((a, b) => a - b);
+        logger.debug(`[WindowsStrategy] Parsed ${result.length} ports: ${result.join(', ')}`);
+        return result;
     }
 
     getErrorMessages(): { processNotFound: string; commandNotAvailable: string; requirements: string[] } {
@@ -150,7 +151,7 @@ export class WindowsStrategy implements PlatformStrategy {
             requirements: [
                 'Antigravity is running',
                 'language_server_windows_x64.exe process is running',
-                'The system has permission to run PowerShell and netstat commands',
+                'PowerShell Get-NetTCPConnection is available (Windows 8+)',
             ],
         };
     }

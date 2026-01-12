@@ -218,6 +218,7 @@ export class CockpitHUD {
             groupMappings: config.groupMappings,
             language: config.language,
             antigravityToolsSyncEnabled: configService.getStateFlag('antigravityToolsSyncEnabled', false),
+            antigravityToolsAutoSwitchEnabled: configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true),
         });
     }
 

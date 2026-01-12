@@ -9,6 +9,7 @@ import { WebviewMessage } from '../shared/types';
 import { TIMING } from '../shared/constants';
 import { autoTriggerController } from '../auto_trigger/controller';
 import { credentialStorage } from '../auto_trigger';
+import { previewLocalCredential, commitLocalCredential } from '../auto_trigger/local_auth_importer';
 import { announcementService } from '../announcement';
 import { antigravityToolsSyncService } from '../antigravityTools_sync';
 
@@ -421,9 +422,23 @@ export class MessageController {
                 case 'antigravityToolsSync.toggle':
                     if (typeof message.enabled === 'boolean') {
                         await configService.setStateFlag('antigravityToolsSyncEnabled', message.enabled);
+                        const autoSwitchEnabled = configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true);
                         this.hud.sendMessage({
                             type: 'antigravityToolsSyncStatus',
-                            data: { enabled: message.enabled },
+                            data: { autoSyncEnabled: message.enabled, autoSwitchEnabled },
+                        });
+                        if (message.enabled) {
+                            await this.handleAntigravityToolsImport(true);
+                        }
+                    }
+                    break;
+                case 'antigravityToolsSync.toggleAutoSwitch':
+                    if (typeof message.enabled === 'boolean') {
+                        await configService.setStateFlag('antigravityToolsAutoSwitchEnabled', message.enabled);
+                        const autoSyncEnabled = configService.getStateFlag('antigravityToolsSyncEnabled', false);
+                        this.hud.sendMessage({
+                            type: 'antigravityToolsSyncStatus',
+                            data: { autoSyncEnabled, autoSwitchEnabled: message.enabled },
                         });
                         if (message.enabled) {
                             await this.handleAntigravityToolsImport(true);
@@ -499,6 +514,13 @@ export class MessageController {
                         logger.error(`Authorization failed: ${err.message}`);
                         vscode.window.showErrorMessage(`Authorization failed: ${err.message}`);
                     }
+                    break;
+
+                case 'autoTrigger.importLocal':
+                    await this.handleLocalAuthImport();
+                    break;
+                case 'autoTrigger.importLocalConfirm':
+                    await this.handleLocalAuthImportConfirm(message.overwrite === true);
                     break;
 
                 case 'autoTrigger.revoke':
@@ -747,12 +769,76 @@ export class MessageController {
         });
     }
 
+    private async handleLocalAuthImport(): Promise<void> {
+        try {
+            const snapshotEmail = this.reactor.getLatestSnapshot()?.userInfo?.email;
+            const fallbackEmail = snapshotEmail && snapshotEmail !== 'N/A' && snapshotEmail.includes('@')
+                ? snapshotEmail
+                : undefined;
+            const preview = await previewLocalCredential(fallbackEmail);
+            this.hud.sendMessage({
+                type: 'localAuthImportPrompt',
+                data: {
+                    email: preview.email,
+                    exists: preview.exists,
+                },
+            });
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error(`[LocalAuthImport] Failed: ${err.message}`);
+            this.hud.sendMessage({
+                type: 'localAuthImportError',
+                data: {
+                    message: err.message,
+                },
+            });
+            vscode.window.showErrorMessage(
+                t('quotaSource.importLocalFailed', { message: err.message })
+                || `Import failed: ${err.message}`,
+            );
+        }
+    }
+
+    private async handleLocalAuthImportConfirm(overwrite: boolean): Promise<void> {
+        try {
+            const snapshotEmail = this.reactor.getLatestSnapshot()?.userInfo?.email;
+            const fallbackEmail = snapshotEmail && snapshotEmail !== 'N/A' && snapshotEmail.includes('@')
+                ? snapshotEmail
+                : undefined;
+            const result = await commitLocalCredential({ overwrite, fallbackEmail });
+            const state = await autoTriggerController.getState();
+            this.hud.sendMessage({
+                type: 'autoTriggerState',
+                data: state,
+            });
+            if (configService.getConfig().quotaSource === 'authorized') {
+                this.reactor.syncTelemetry();
+            }
+            vscode.window.showInformationMessage(
+                t('quotaSource.importLocalSuccess', { email: result.email })
+                || `Imported account: ${result.email}`,
+            );
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error(`[LocalAuthImport] Confirm failed: ${err.message}`);
+            vscode.window.showErrorMessage(
+                t('quotaSource.importLocalFailed', { message: err.message })
+                || `Import failed: ${err.message}`,
+            );
+        }
+    }
+
     /**
      * 读取 AntigravityTools 账号，必要时弹框提示用户确认
      * @param isAuto 是否自动模式
      */
     private async handleAntigravityToolsImport(isAuto: boolean): Promise<void> {
         try {
+            const autoSyncEnabled = configService.getStateFlag('antigravityToolsSyncEnabled', false);
+            const autoSwitchEnabled = configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true);
+            if (isAuto && !autoSyncEnabled && !autoSwitchEnabled) {
+                return;
+            }
             const detection = await antigravityToolsSyncService.detect();
             const activeEmail = await credentialStorage.getActiveAccount();
             
@@ -777,26 +863,30 @@ export class MessageController {
             // 场景 B：有新账户需要导入
             if (detection.newEmails.length > 0) {
                 if (isAuto) {
-                    // 自动模式：根据面板可见性决定弹框或静默
-                    if (this.hud.isVisible()) {
-                        // 面板可见，弹框 + 自动确认
-                        this.hud.sendMessage({
-                            type: 'antigravityToolsSyncPrompt',
-                            data: {
-                                promptType: 'new_accounts',
-                                newEmails: detection.newEmails,
-                                currentEmail: detection.currentEmail,
-                                sameAccount,
-                                autoConfirm: true,
-                            },
-                        });
-                    } else {
-                        // 面板不可见，静默导入
-                        await this.performAntigravityToolsImport(activeEmail, true, false);
-                        vscode.window.showInformationMessage(
-                            t('antigravityToolsSync.autoImported', { email: detection.currentEmail }) 
-                            || `已自动同步账户: ${detection.currentEmail}`
-                        );
+                    if (autoSyncEnabled) {
+                        // 自动模式：根据面板可见性决定弹框或静默
+                        if (this.hud.isVisible()) {
+                            // 面板可见，弹框 + 自动确认
+                            this.hud.sendMessage({
+                                type: 'antigravityToolsSyncPrompt',
+                                data: {
+                                    promptType: 'new_accounts',
+                                    newEmails: detection.newEmails,
+                                    currentEmail: detection.currentEmail,
+                                    sameAccount,
+                                    autoConfirm: true,
+                                    autoConfirmImportOnly: !autoSwitchEnabled,
+                                },
+                            });
+                        } else {
+                            // 面板不可见，静默导入
+                            await this.performAntigravityToolsImport(activeEmail, true, !autoSwitchEnabled);
+                            vscode.window.showInformationMessage(
+                                t('antigravityToolsSync.autoImported', { email: detection.currentEmail }) 
+                                || `已自动同步账户: ${detection.currentEmail}`
+                            );
+                        }
+                        return;
                     }
                 } else {
                     // 手动模式，弹框让用户选择
@@ -811,7 +901,9 @@ export class MessageController {
                         },
                     });
                 }
-                return;
+                if (!isAuto) {
+                    return;
+                }
             }
 
             // 场景 C：无新增，且账号一致则无需切换
@@ -824,6 +916,9 @@ export class MessageController {
 
             // 场景 D：无新增账户，但账户不一致
             if (isAuto) {
+                if (!autoSwitchEnabled) {
+                    return;
+                }
                 // 自动模式：静默切换（无需网络请求，瞬间完成）
                 await antigravityToolsSyncService.switchOnly(detection.currentEmail);
                 // 刷新状态

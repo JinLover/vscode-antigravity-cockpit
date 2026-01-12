@@ -149,11 +149,22 @@ async function bootSystems(): Promise<void> {
 
     const quotaSource = configService.getConfig().quotaSource;
     if (quotaSource === 'authorized') {
-        logger.info('Authorized quota source active, skipping local process scan');
+        logger.info('Authorized quota source active, starting reactor with background local scan');
         reactor.startReactor(configService.getRefreshIntervalMs());
         systemOnline = true;
         autoRetryCount = 0;
         statusBar.setLoading();
+        hunter.scanEnvironment(1)
+            .then(info => {
+                if (info) {
+                    reactor.engage(info.connectPort, info.csrfToken, hunter.getLastDiagnostics());
+                    logger.info('Local Antigravity connection detected in authorized mode');
+                }
+            })
+            .catch(err => {
+                const error = err instanceof Error ? err : new Error(String(err));
+                logger.debug(`Background local scan skipped: ${error.message}`);
+            });
         return;
     }
 

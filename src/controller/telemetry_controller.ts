@@ -101,6 +101,7 @@ export class TelemetryController {
                 groupMappings: config.groupMappings,
                 language: config.language,
                 antigravityToolsSyncEnabled: configService.getStateFlag('antigravityToolsSyncEnabled', false),
+                antigravityToolsAutoSwitchEnabled: configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true),
             });
 
             // 更新 QuickPick 视图数据
@@ -273,6 +274,11 @@ export class TelemetryController {
      */
     private async performAutoSync(): Promise<void> {
         try {
+            const autoSyncEnabled = configService.getStateFlag('antigravityToolsSyncEnabled', false);
+            const autoSwitchEnabled = configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true);
+            if (!autoSyncEnabled) {
+                return;
+            }
             const detection = await antigravityToolsSyncService.detect();
             const activeEmail = await credentialStorage.getActiveAccount();
 
@@ -302,17 +308,18 @@ export class TelemetryController {
                             currentEmail: detection.currentEmail,
                             sameAccount,
                             autoConfirm: true,
+                            autoConfirmImportOnly: !autoSwitchEnabled,
                         },
                     });
                 } else {
                     // 面板不可见，静默导入
-                    await antigravityToolsSyncService.importAndSwitch(activeEmail, false);
+                    await antigravityToolsSyncService.importAndSwitch(activeEmail, !autoSwitchEnabled);
                     // 刷新状态
                     const state = await autoTriggerController.getState();
                     this.hud.sendMessage({ type: 'autoTriggerState', data: state });
                     this.hud.sendMessage({ type: 'antigravityToolsSyncComplete', data: { success: true } });
                     // 修复：自动导入并切换后，必须同步新账号配额数据
-                    if (configService.getConfig().quotaSource === 'authorized') {
+                    if (autoSwitchEnabled && configService.getConfig().quotaSource === 'authorized') {
                         this.reactor.syncTelemetry();
                     }
                     vscode.window.showInformationMessage(
@@ -325,6 +332,9 @@ export class TelemetryController {
             }
 
             // 只需切换（账户已存在本地）
+            if (!autoSwitchEnabled) {
+                return;
+            }
             await antigravityToolsSyncService.switchOnly(detection.currentEmail);
             // 刷新状态
             const state = await autoTriggerController.getState();

@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.33]
+
+### Added
+- **Local Auth Importer**: Read Antigravity client tokens from `state.vscdb` and support local account import with preview/overwrite flow.
+- **Account Sync Settings**: New sync config modal with feature overview, auto sync/auto switch toggles, and manual import for local/Antigravity Tools accounts.
+
+### Changed
+- **Auto Sync Flow**: Moved auto sync to backend handling with optional import-only mode; auto switch refreshes quota after switching.
+- **UI**: Refined sync config layout, button alignment, and copy for a more compact experience.
+
+### Fixed
+- **Authorized Quota**: Avoid stale quota updates after fast account removal/switching by clearing cache and dropping outdated results.
+- **Windows Port Detection**: Use PowerShell `Get-NetTCPConnection` to avoid localized `LISTENING` parsing failures.
+
 ## [1.8.32]
 
 ### Changed

@@ -43,6 +43,7 @@
     let authorizedAvailable = false;
     let authorizationStatus = null;
     let antigravityToolsSyncEnabled = false;
+    let antigravityToolsAutoSwitchEnabled = true;
     let visibleModelIds = [];
     let renameOriginalName = ''; // 原始名称（用于重置）
     let isProfileHidden = false;  // 控制整个计划详情卡片的显示/隐藏
@@ -690,6 +691,9 @@
                 if (message.config.antigravityToolsSyncEnabled !== undefined) {
                     antigravityToolsSyncEnabled = message.config.antigravityToolsSyncEnabled;
                 }
+                if (message.config.antigravityToolsAutoSwitchEnabled !== undefined) {
+                    antigravityToolsAutoSwitchEnabled = message.config.antigravityToolsAutoSwitchEnabled;
+                }
 
 
             }
@@ -748,13 +752,27 @@
         if (message.type === 'antigravityToolsSyncStatus') {
             if (message.data?.enabled !== undefined) {
                 antigravityToolsSyncEnabled = message.data.enabled;
-                updateQuotaAuthUI();
             }
+            if (message.data?.autoSyncEnabled !== undefined) {
+                antigravityToolsSyncEnabled = message.data.autoSyncEnabled;
+            }
+            if (message.data?.autoSwitchEnabled !== undefined) {
+                antigravityToolsAutoSwitchEnabled = message.data.autoSwitchEnabled;
+            }
+            updateQuotaAuthUI();
         }
 
         if (message.type === 'antigravityToolsSyncPrompt') {
             const data = message.data || {};
             showAntigravityToolsSyncPrompt(data);
+        }
+
+        if (message.type === 'localAuthImportPrompt') {
+            const data = message.data || {};
+            showLocalAuthImportPrompt(data);
+        }
+        if (message.type === 'localAuthImportError') {
+            closeLocalAuthImportPrompt();
         }
 
         // 处理导入完成消息
@@ -815,7 +833,7 @@
         });
     }
 
-    // ============ Antigravity Tools 同步配置弹框 ============
+    // ============ 账号同步配置弹框 ============
 
     function openATSyncConfigModal() {
         let modal = document.getElementById('at-sync-config-modal');
@@ -826,49 +844,90 @@
             modal.innerHTML = `
                 <div class="modal-content at-sync-config-content">
                     <div class="modal-header">
-                        <h3>⚙ ${i18n['atSyncConfig.title'] || 'Antigravity Tools 同步配置'}</h3>
+                        <h3>⚙ ${i18n['atSyncConfig.title'] || '账号同步配置'}</h3>
                         <button class="close-btn" id="close-at-sync-config-modal">×</button>
                     </div>
                     <div class="modal-body at-sync-config-body">
                         <!-- 数据访问说明 -->
                         <div class="at-sync-section at-sync-info-section">
-                            <div class="at-sync-section-title">🛡️ ${i18n['atSyncConfig.dataAccessTitle'] || '数据访问说明'}</div>
-                            <div class="at-sync-description">
-                                ${i18n['atSyncConfig.dataAccessDesc'] || '本功能将读取您本地 Antigravity Tools 的账户信息，用于在本插件中调用 AI 模型。'}
-                            </div>
-                            <div class="at-sync-path-info">
-                                <span class="at-sync-path-label">${i18n['atSyncConfig.readPath'] || '读取路径'}:</span>
-                                <code class="at-sync-path">~/.antigravity_tools/</code>
-                            </div>
-                            <div class="at-sync-data-list">
-                                <span class="at-sync-data-label">${i18n['atSyncConfig.readData'] || '读取内容'}:</span>
-                                <span class="at-sync-data-items">${i18n['atSyncConfig.readDataItems'] || '账户邮箱、Refresh Token'}</span>
-                            </div>
+                            <details class="at-sync-details at-sync-info-details">
+                                <summary class="at-sync-details-summary">
+                                    <div class="at-sync-section-title-row">
+                                        <div class="at-sync-section-title">ℹ️ ${i18n['atSyncConfig.featureTitle'] || '功能说明'}</div>
+                                        <span class="at-sync-details-link">
+                                            ${i18n['atSyncConfig.dataAccessDetails'] || '展开详情说明'}
+                                        </span>
+                                    </div>
+                                    <div class="at-sync-description at-sync-info-summary">
+                                        ${i18n['atSyncConfig.featureSummary'] || '查看数据访问与同步/导入规则。'}
+                                    </div>
+                                </summary>
+                                <div class="at-sync-details-body">
+                                    <div class="at-sync-info-block">
+                                        <div class="at-sync-info-subtitle">🛡️ ${i18n['atSyncConfig.dataAccessTitle'] || '数据访问说明'}</div>
+                                        <div class="at-sync-description">
+                                            ${i18n['atSyncConfig.dataAccessDesc'] || '本功能会读取您本地 Antigravity Tools 与 Antigravity 客户端的账户信息，仅用于本插件授权/切换。'}
+                                        </div>
+                                        <div class="at-sync-path-info">
+                                            <span class="at-sync-path-label">${i18n['atSyncConfig.readPathTools'] || 'Antigravity Tools 路径'}:</span>
+                                            <code class="at-sync-path">~/.antigravity_tools/</code>
+                                        </div>
+                                        <div class="at-sync-path-info">
+                                            <span class="at-sync-path-label">${i18n['atSyncConfig.readPathLocal'] || 'Antigravity 客户端路径'}:</span>
+                                            <code class="at-sync-path">.../Antigravity/User/globalStorage/state.vscdb</code>
+                                        </div>
+                                        <div class="at-sync-data-list">
+                                            <span class="at-sync-data-label">${i18n['atSyncConfig.readData'] || '读取内容'}:</span>
+                                            <span class="at-sync-data-items">${i18n['atSyncConfig.readDataItems'] || '账户邮箱、Refresh Token（本地读取）'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="at-sync-info-block">
+                                        <div class="at-sync-info-line">
+                                            <span class="at-sync-info-label">${i18n['atSyncConfig.autoSyncTitle'] || '自动同步'}：</span>
+                                            <span class="at-sync-info-text">${i18n['atSyncConfig.autoSyncDesc'] || '启用后检测到 Antigravity Tools 新账号时自动导入（是否切换由“自动切换”控制）。'}</span>
+                                        </div>
+                                        <div class="at-sync-info-line">
+                                            <span class="at-sync-info-label">${i18n['atSyncConfig.autoSwitchTitle'] || '自动切换'}：</span>
+                                            <span class="at-sync-info-text">${i18n['atSyncConfig.autoSwitchDesc'] || '启用后优先切换到 Antigravity Tools 当前账号；不可用则跟随本地客户端账号（仅授权模式生效）。'}</span>
+                                        </div>
+                                        <div class="at-sync-info-line">
+                                            <span class="at-sync-info-label">${i18n['atSyncConfig.manualImportTitle'] || '手动导入'}：</span>
+                                            <span class="at-sync-info-text">${i18n['atSyncConfig.manualImportDesc'] || '分别导入本地账户或 Antigravity Tools 账户，仅执行一次。'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
                         
-                        <!-- 自动同步 -->
+                        <!-- 自动同步 / 自动切换 -->
                         <div class="at-sync-section">
-                            <div class="at-sync-section-title">🔄 ${i18n['atSyncConfig.autoSyncTitle'] || '自动同步'}</div>
-                            <div class="at-sync-toggle-row">
-                                <label class="at-sync-toggle-label">
-                                    <input type="checkbox" id="at-sync-modal-checkbox" ${antigravityToolsSyncEnabled ? 'checked' : ''}>
-                                    <span>${i18n['atSyncConfig.enableAutoSync'] || '启用自动同步'}</span>
-                                </label>
-                            </div>
-                            <div class="at-sync-description">
-                                ${i18n['atSyncConfig.autoSyncDesc'] || '启用后，当您在 Antigravity Tools 中切换账号时或者添加账户时，本插件会自动同步账户并切换到对应账号。'}
+                            <div class="at-sync-toggle-grid">
+                                <div class="at-sync-toggle-card">
+                                    <label class="at-sync-toggle-label">
+                                        <input type="checkbox" id="at-sync-modal-checkbox" ${antigravityToolsSyncEnabled ? 'checked' : ''}>
+                                        <span>${i18n['atSyncConfig.enableAutoSync'] || '自动同步Antigravity Tools账户'}</span>
+                                    </label>
+                                </div>
+                                <div class="at-sync-toggle-card">
+                                    <label class="at-sync-toggle-label">
+                                        <input type="checkbox" id="at-sync-modal-switch-checkbox" ${antigravityToolsAutoSwitchEnabled ? 'checked' : ''}>
+                                        <span>${i18n['atSyncConfig.enableAutoSwitch'] || '自动切换账户'}</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         
                         <!-- 手动导入 -->
                         <div class="at-sync-section">
                             <div class="at-sync-section-title">📥 ${i18n['atSyncConfig.manualImportTitle'] || '手动导入'}</div>
-                            <div class="at-sync-description">
-                                ${i18n['atSyncConfig.manualImportDesc'] || '将 Antigravity Tools 当前正在使用的账号立即导入到本插件。仅执行一次。'}
+                            <div class="at-sync-import-actions">
+                                <button id="at-sync-modal-import-local-btn" class="at-btn at-btn-primary at-sync-import-btn">
+                                    ${i18n['atSyncConfig.importLocal'] || '导入本地账户'}
+                                </button>
+                                <button id="at-sync-modal-import-tools-btn" class="at-btn at-btn-primary at-sync-import-btn">
+                                    ${i18n['atSyncConfig.importTools'] || '导入 Antigravity Tools 账户'}
+                                </button>
                             </div>
-                            <button id="at-sync-modal-import-btn" class="at-btn at-btn-primary at-sync-import-btn">
-                                ${i18n['atSyncConfig.importNow'] || '立即导入账户'}
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -885,20 +944,33 @@
         }
 
         // 更新 checkbox 状态
-        const checkbox = modal.querySelector('#at-sync-modal-checkbox');
-        if (checkbox) {
-            checkbox.checked = antigravityToolsSyncEnabled;
+        const syncCheckbox = modal.querySelector('#at-sync-modal-checkbox');
+        if (syncCheckbox) {
+            syncCheckbox.checked = antigravityToolsSyncEnabled;
         }
+        const switchCheckboxEl = modal.querySelector('#at-sync-modal-switch-checkbox');
+        if (switchCheckboxEl) {
+            switchCheckboxEl.checked = antigravityToolsAutoSwitchEnabled;
+        }
+        modal.querySelectorAll('.at-sync-details').forEach((detail) => {
+            detail.removeAttribute('open');
+        });
 
         // 绑定事件（每次打开都重新绑定以确保状态正确）
         const newCheckbox = modal.querySelector('#at-sync-modal-checkbox');
-        const importBtn = modal.querySelector('#at-sync-modal-import-btn');
+        const importLocalBtn = modal.querySelector('#at-sync-modal-import-local-btn');
+        const importToolsBtn = modal.querySelector('#at-sync-modal-import-tools-btn');
+        const switchCheckboxControl = modal.querySelector('#at-sync-modal-switch-checkbox');
 
         // 移除旧的事件监听器
         const newCheckboxClone = newCheckbox.cloneNode(true);
         newCheckbox.parentNode.replaceChild(newCheckboxClone, newCheckbox);
-        const importBtnClone = importBtn.cloneNode(true);
-        importBtn.parentNode.replaceChild(importBtnClone, importBtn);
+        const importLocalBtnClone = importLocalBtn.cloneNode(true);
+        importLocalBtn.parentNode.replaceChild(importLocalBtnClone, importLocalBtn);
+        const importToolsBtnClone = importToolsBtn.cloneNode(true);
+        importToolsBtn.parentNode.replaceChild(importToolsBtnClone, importToolsBtn);
+        const switchCheckboxClone = switchCheckboxControl.cloneNode(true);
+        switchCheckboxControl.parentNode.replaceChild(switchCheckboxClone, switchCheckboxControl);
 
         // 绑定新的事件监听器
         modal.querySelector('#at-sync-modal-checkbox')?.addEventListener('change', (e) => {
@@ -906,8 +978,18 @@
             antigravityToolsSyncEnabled = enabled;
             vscode.postMessage({ command: 'antigravityToolsSync.toggle', enabled });
         });
+        modal.querySelector('#at-sync-modal-switch-checkbox')?.addEventListener('change', (e) => {
+            const enabled = e.target.checked;
+            antigravityToolsAutoSwitchEnabled = enabled;
+            vscode.postMessage({ command: 'antigravityToolsSync.toggleAutoSwitch', enabled });
+        });
 
-        modal.querySelector('#at-sync-modal-import-btn')?.addEventListener('click', () => {
+        modal.querySelector('#at-sync-modal-import-local-btn')?.addEventListener('click', () => {
+            showLocalAuthImportLoading();
+            vscode.postMessage({ command: 'autoTrigger.importLocal' });
+            closeATSyncConfigModal();
+        });
+        modal.querySelector('#at-sync-modal-import-tools-btn')?.addEventListener('click', () => {
             vscode.postMessage({ command: 'antigravityToolsSync.import' });
             closeATSyncConfigModal();
         });
@@ -917,6 +999,136 @@
 
     function closeATSyncConfigModal() {
         const modal = document.getElementById('at-sync-config-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    function formatMaskedEmail(email) {
+        if (!email || typeof email !== 'string') {
+            return '';
+        }
+        return email;
+    }
+
+    function ensureLocalAuthImportModal() {
+        let modal = document.getElementById('local-auth-import-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'local-auth-import-modal';
+            modal.className = 'modal hidden';
+            document.body.appendChild(modal);
+        }
+        return modal;
+    }
+
+    function bindLocalAuthImportModalClose(modal) {
+        modal.onclick = (e) => {
+            if (e.target === modal) closeLocalAuthImportPrompt();
+        };
+        modal.querySelector('#close-local-import-modal')?.addEventListener('click', closeLocalAuthImportPrompt);
+    }
+
+    function showLocalAuthImportLoading() {
+        const modal = ensureLocalAuthImportModal();
+        modal.innerHTML = `
+            <div class="modal-content local-import-content">
+                <div class="modal-header">
+                    <h3>${i18n['localImportPrompt.loadingTitle'] || '正在检测本地授权'}</h3>
+                    <button class="close-btn" id="close-local-import-modal">×</button>
+                </div>
+                <div class="modal-body local-import-body">
+                    <div class="local-import-panel">
+                        <div class="local-import-desc">${i18n['localImportPrompt.loadingDesc'] || '正在读取本地已授权账号信息，请稍候…'}</div>
+                        <div class="local-import-loading">
+                            <span class="local-import-spinner"></span>
+                            <span>${i18n['localImportPrompt.loadingHint'] || '正在检测本地授权账号'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        bindLocalAuthImportModalClose(modal);
+        modal.classList.remove('hidden');
+    }
+
+    function showLocalAuthImportPrompt(data) {
+        const email = typeof data.email === 'string' ? data.email : '';
+        const exists = data.exists === true;
+        const displayEmail = formatMaskedEmail(email);
+        const modal = ensureLocalAuthImportModal();
+
+        modal.innerHTML = `
+            <div class="modal-content local-import-content">
+                <div class="modal-header">
+                    <h3>${i18n['localImportPrompt.title'] || '确认同步本地授权'}</h3>
+                    <button class="close-btn" id="close-local-import-modal">×</button>
+                </div>
+                <div class="modal-body local-import-body">
+                    <div class="local-import-panel">
+                        <div class="local-import-desc">${i18n['localImportPrompt.desc'] || '已检测到本地已授权账号，是否同步到插件中？'}</div>
+                        <div class="local-import-summary">
+                            <div class="local-import-label">${i18n['localImportPrompt.foundLabel'] || '检测到账号'}</div>
+                            <div class="local-import-email" id="local-import-email"></div>
+                            <span class="local-import-tag" id="local-import-tag">${i18n['localImportPrompt.existsTag'] || '已存在'}</span>
+                        </div>
+                        <div class="local-import-note" id="local-import-note"></div>
+                    </div>
+                    <div class="local-import-actions">
+                        <button id="local-import-cancel-btn" class="at-btn at-btn-outline">${i18n['localImportPrompt.cancel'] || '取消'}</button>
+                        <button id="local-import-confirm-btn" class="at-btn at-btn-primary"></button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        bindLocalAuthImportModalClose(modal);
+
+        const emailEl = modal.querySelector('#local-import-email');
+        const tagEl = modal.querySelector('#local-import-tag');
+        const noteEl = modal.querySelector('#local-import-note');
+        const confirmBtn = modal.querySelector('#local-import-confirm-btn');
+        const cancelBtn = modal.querySelector('#local-import-cancel-btn');
+
+        if (emailEl) {
+            emailEl.textContent = displayEmail || i18n['localImportPrompt.unknownEmail'] || '未知账号';
+        }
+        if (tagEl) {
+            tagEl.style.display = exists ? 'inline-flex' : 'none';
+        }
+        if (noteEl) {
+            noteEl.textContent = exists
+                ? (i18n['localImportPrompt.existsDesc'] || '该账号已存在，继续将覆盖本地保存的授权信息。')
+                : (i18n['localImportPrompt.newDesc'] || '将导入并切换为该账号。');
+        }
+
+        const confirmLabel = exists
+            ? (i18n['localImportPrompt.overwrite'] || '覆盖并同步')
+            : (i18n['localImportPrompt.confirm'] || '确认同步');
+        if (confirmBtn) {
+            confirmBtn.textContent = confirmLabel;
+        }
+
+        if (confirmBtn && confirmBtn.parentNode && cancelBtn && cancelBtn.parentNode) {
+            const confirmBtnClone = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(confirmBtnClone, confirmBtn);
+            const cancelBtnClone = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(cancelBtnClone, cancelBtn);
+
+            modal.querySelector('#local-import-confirm-btn')?.addEventListener('click', () => {
+                vscode.postMessage({ command: 'autoTrigger.importLocalConfirm', overwrite: exists });
+                closeLocalAuthImportPrompt();
+            });
+            modal.querySelector('#local-import-cancel-btn')?.addEventListener('click', () => {
+                closeLocalAuthImportPrompt();
+            });
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeLocalAuthImportPrompt() {
+        const modal = document.getElementById('local-auth-import-modal');
         if (modal) {
             modal.classList.add('hidden');
         }
@@ -937,6 +1149,7 @@
         const currentEmail = data.currentEmail || '';
         const localEmail = data.localEmail || '';
         const autoConfirm = data.autoConfirm === true;
+        const autoConfirmImportOnly = data.autoConfirmImportOnly === true;
 
         let modal = document.getElementById('antigravityTools-sync-modal');
         if (!modal) {
@@ -1102,6 +1315,11 @@
             }
         }
 
+        function doImportOnly() {
+            setLoading(importOnlyBtn);
+            vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: true });
+        }
+
         function doImportAndSwitch() {
             setLoading(importSwitchBtn);
             vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: false });
@@ -1115,15 +1333,18 @@
             clearAutoTimer();
             modal.classList.add('hidden');
         });
-        importOnlyBtn?.addEventListener('click', () => {
-            setLoading(importOnlyBtn);
-            vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: true });
-        });
+        importOnlyBtn?.addEventListener('click', doImportOnly);
         importSwitchBtn?.addEventListener('click', doImportAndSwitch);
 
         // 自动确认模式：延迟一小段时间后自动执行"导入并切换"
         if (autoConfirm) {
-            autoConfirmTimer = setTimeout(() => doImportAndSwitch(), 300);
+            autoConfirmTimer = setTimeout(() => {
+                if (autoConfirmImportOnly) {
+                    doImportOnly();
+                } else {
+                    doImportAndSwitch();
+                }
+            }, 300);
         }
     }
 
@@ -1172,17 +1393,20 @@
 
         card.classList.remove('hidden');
         const auth = authorizationStatus;
-        if (authUi) {
-            authUi.updateState(auth, antigravityToolsSyncEnabled);
-            authUi.renderAuthRow(row, { showSyncToggleInline: false });
-            return;
-        }
         const accounts = auth?.accounts || [];
         const hasAccounts = accounts.length > 0;
         const activeAccount = auth?.activeAccount;
         const activeEmail = activeAccount || (accounts.length > 0 ? accounts[0].email : null);
-        // Antigravity Tools 同步配置按钮
-        const atSyncConfigBtn = `<button id="at-sync-config-btn" class="at-btn at-btn-outline" title="${i18n['atSyncConfig.title'] || 'Antigravity Tools 同步配置'}">⚙ ${i18n['atSyncConfig.btnText'] || 'Antigravity Tools 同步配置'}</button>`;
+
+        if (authUi) {
+            authUi.updateState(auth, antigravityToolsSyncEnabled, antigravityToolsAutoSwitchEnabled);
+            authUi.renderAuthRow(row, {
+                showSyncToggleInline: false,
+            });
+            return;
+        }
+        // 账号同步配置按钮
+        const atSyncConfigBtn = `<button id="at-sync-config-btn" class="at-btn at-btn-primary" title="${i18n['atSyncConfig.title'] || '账号同步配置'}">⚙ ${i18n['atSyncConfig.btnText'] || '账号同步配置'}</button>`;
 
         if (hasAccounts && activeEmail) {
             // 保持原有的单行布局，增加下拉箭头用于管理多账号
@@ -1217,7 +1441,7 @@
                 openAccountManageModal();
             });
 
-            // Antigravity Tools 同步配置按钮
+            // 账号同步配置按钮
             document.getElementById('at-sync-config-btn')?.addEventListener('click', () => {
                 openATSyncConfigModal();
             });
@@ -1234,7 +1458,7 @@
                 </div>
             `;
             document.getElementById('quota-auth-btn')?.addEventListener('click', () => {
-                vscode.postMessage({ command: 'autoTrigger.authorize' });
+                openAuthChoiceModal();
             });
             document.getElementById('at-sync-config-btn')?.addEventListener('click', () => {
                 openATSyncConfigModal();
@@ -1708,6 +1932,7 @@
 
     window.retryConnection = retryConnection;
     window.openLogs = openLogs;
+    window.showLocalAuthImportLoading = showLocalAuthImportLoading;
     window.openAccountManageModal = () => {
         if (authUi) {
             authUi.openAccountManageModal();
@@ -1927,8 +2152,88 @@
             primaryBtn?.addEventListener('click', handleRefresh);
         } else {
             primaryBtn?.addEventListener('click', () => {
-                vscode.postMessage({ command: 'autoTrigger.authorize' });
+                openAuthChoiceModal();
             });
+        }
+    }
+
+    function openAuthChoiceModal() {
+        let modal = document.getElementById('auth-choice-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'auth-choice-modal';
+            modal.className = 'modal hidden';
+            modal.innerHTML = `
+                <div class="modal-content auth-choice-content">
+                    <div class="modal-header">
+                        <h3>${i18n['authChoice.title'] || '选择登录方式'}</h3>
+                        <button class="close-btn" id="close-auth-choice-modal">×</button>
+                    </div>
+                    <div class="modal-body auth-choice-body">
+                        <div class="auth-choice-info">
+                            <div class="auth-choice-desc">${i18n['authChoice.desc'] || '请选择读取本地已授权账号或授权登录。'}</div>
+                            <div class="auth-choice-tip">${i18n['authChoice.tip'] || '授权登录适用于无客户端；本地读取仅对当前机器生效。'}</div>
+                        </div>
+                        <div class="auth-choice-grid">
+                            <div class="auth-choice-card">
+                                <div class="auth-choice-header">
+                                    <span class="auth-choice-icon">🖥️</span>
+                                    <div>
+                                        <div class="auth-choice-title">${i18n['authChoice.localTitle'] || '读取本地已授权账号'}</div>
+                                        <div class="auth-choice-text">${i18n['authChoice.localDesc'] || '读取本机 Antigravity 客户端已授权账号，不重新授权，仅复用现有授权。'}</div>
+                                    </div>
+                                </div>
+                                <button id="auth-choice-local-btn" class="at-btn at-btn-primary auth-choice-btn">
+                                    ${i18n['authChoice.localBtn'] || '读取本地授权'}
+                                </button>
+                            </div>
+                            <div class="auth-choice-card">
+                                <div class="auth-choice-header">
+                                    <span class="auth-choice-icon">🔐</span>
+                                    <div>
+                                        <div class="auth-choice-title">${i18n['authChoice.oauthTitle'] || '授权登录（云端授权）'}</div>
+                                        <div class="auth-choice-text">${i18n['authChoice.oauthDesc'] || '通过 Google OAuth 新授权，适用于无客户端场景，可撤销。'}</div>
+                                    </div>
+                                </div>
+                                <button id="auth-choice-oauth-btn" class="at-btn at-btn-primary auth-choice-btn">
+                                    ${i18n['authChoice.oauthBtn'] || '去授权登录'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('close-auth-choice-modal')?.addEventListener('click', closeAuthChoiceModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeAuthChoiceModal();
+            });
+        }
+
+        const oauthBtn = modal.querySelector('#auth-choice-oauth-btn');
+        const localBtn = modal.querySelector('#auth-choice-local-btn');
+        const oauthBtnClone = oauthBtn.cloneNode(true);
+        oauthBtn.parentNode.replaceChild(oauthBtnClone, oauthBtn);
+        const localBtnClone = localBtn.cloneNode(true);
+        localBtn.parentNode.replaceChild(localBtnClone, localBtn);
+
+        modal.querySelector('#auth-choice-oauth-btn')?.addEventListener('click', () => {
+            vscode.postMessage({ command: 'autoTrigger.authorize' });
+            closeAuthChoiceModal();
+        });
+        modal.querySelector('#auth-choice-local-btn')?.addEventListener('click', () => {
+            showLocalAuthImportLoading();
+            vscode.postMessage({ command: 'autoTrigger.importLocal' });
+            closeAuthChoiceModal();
+        });
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeAuthChoiceModal() {
+        const modal = document.getElementById('auth-choice-modal');
+        if (modal) {
+            modal.classList.add('hidden');
         }
     }
 
