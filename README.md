@@ -236,9 +236,9 @@ npm run package
 
 ## 💬 交流群
 
-| 微信群（1、2、3群已满 扫码进4群 或者加微信拉进1群） | 微信号（个人名片） |
-| :---: | :---: |
-| <img src="docs/wechat_group_qr4.png" width="200" /> | <img src="docs/wechat_info2.png" width="200" /> |
+| 微信群（1、2、3、4群已满 扫码进5群 或者加微信拉进1群，暂不支持拉人进群了 被封两个号了）
+| :---: |
+| <img src="docs/wechat_group_qr4.png" width="200" /> 
 
 ---
 
