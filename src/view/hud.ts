@@ -1059,7 +1059,7 @@ export class CockpitHUD {
             <span class="footer-text">${i18n.t('footer.enjoyingThis')}</span>
             <div class="footer-links">
                 <a href="https://github.com/jlcodes99/vscode-antigravity-cockpit" target="_blank" class="footer-link star-link">
-                    ⭐ Star
+                    ${i18n.t('footer.star')}
                 </a>
                 <a href="https://github.com/jlcodes99/vscode-antigravity-cockpit/issues" target="_blank" class="footer-link feedback-link">
                     💬 ${i18n.t('footer.feedback')}

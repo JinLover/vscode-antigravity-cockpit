@@ -17,3 +17,4 @@ export { zhTW } from './zh-tw';
 export { tr } from './tr';
 export { pl } from './pl';
 export { cs } from './cs';
+export { ar } from './ar';

@@ -1,10 +1,10 @@
 /**
  * Antigravity Cockpit - 国际化支持
- * i18n implementation supporting 14 languages
+ * i18n implementation supporting 15 languages
  */
 
 import * as vscode from 'vscode';
-import { en, zhCN, ja, es, de, fr, ptBR, ru, ko, it, zhTW, tr, pl, cs } from './translations';
+import { en, zhCN, ja, es, de, fr, ptBR, ru, ko, it, zhTW, tr, pl, cs, ar } from './translations';
 
 /** 支持的语言 */
 export type SupportedLocale = 
@@ -21,7 +21,8 @@ export type SupportedLocale =
     | 'zh-tw' 
     | 'tr' 
     | 'pl' 
-    | 'cs';
+    | 'cs'
+    | 'ar';
 
 /** 语言显示名称映射 */
 export const localeDisplayNames: Record<SupportedLocale, string> = {
@@ -39,6 +40,7 @@ export const localeDisplayNames: Record<SupportedLocale, string> = {
     'tr': 'Türkçe',
     'pl': 'Polski',
     'cs': 'Čeština',
+    'ar': 'اللغة العربية',
 };
 
 /** 翻译键值对 */
@@ -62,6 +64,7 @@ const translations: Record<SupportedLocale, TranslationMap> = {
     'tr': tr,
     'pl': pl,
     'cs': cs,
+    'ar': ar,
 };
 
 /** 语言代码映射 - 将 VSCode 语言代码映射到我们支持的语言 */
@@ -85,6 +88,7 @@ const localeMapping: Record<string, SupportedLocale> = {
     'tr': 'tr',
     'pl': 'pl',
     'cs': 'cs',
+    'ar': 'ar',
 };
 
 /** i18n 服务类 */
