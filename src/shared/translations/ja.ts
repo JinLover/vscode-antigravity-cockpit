@@ -427,6 +427,8 @@ export const ja = {
     'autoTrigger.accountSwitched': 'アカウントを切り替えました: {email}',
     'autoTrigger.accountDuplicate': 'アカウント {email} は既に存在します',
     'autoTrigger.manageAccounts': 'アカウント管理',
+    'autoTrigger.manageAccountsHintClick': 'メールをクリックしてクォータ表示を切り替えます',
+    'autoTrigger.manageAccountsHintSwitch': '「ログイン切り替え」をクリックしてクライアントのログインアカウントを切り替えます',
     'autoTrigger.reauthorizeSuccess': '再認可に成功しました',
     'autoTrigger.noAccounts': '認可済みのアカウントはありません',
     'autoTrigger.tokenExpired': '期限切れ',

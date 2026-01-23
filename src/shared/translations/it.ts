@@ -424,6 +424,8 @@ export const it = {
     'autoTrigger.accountSwitched': 'Passato all\'account: {email}',
     'autoTrigger.accountDuplicate': 'L\'account {email} esiste già',
     'autoTrigger.manageAccounts': 'Gestisci account',
+    'autoTrigger.manageAccountsHintClick': 'Clicca sull\'email per cambiare la visualizzazione della quota',
+    'autoTrigger.manageAccountsHintSwitch': 'Clicca su "Cambia accesso" per cambiare l\'account di accesso client',
     'autoTrigger.reauthorizeSuccess': 'Riautorizzazione riuscita',
     'autoTrigger.noAccounts': 'Nessun account autorizzato',
     'autoTrigger.tokenExpired': 'Scaduto',

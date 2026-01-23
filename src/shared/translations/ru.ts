@@ -424,6 +424,8 @@ export const ru = {
     'autoTrigger.accountSwitched': 'Переключено на аккаунт: {email}',
     'autoTrigger.accountDuplicate': 'Аккаунт {email} уже существует',
     'autoTrigger.manageAccounts': 'Управление аккаунтами',
+    'autoTrigger.manageAccountsHintClick': 'Нажмите на email, чтобы переключить просмотр квоты',
+    'autoTrigger.manageAccountsHintSwitch': "Нажмите 'Сменить вход', чтобы переключить учетную запись клиента",
     'autoTrigger.reauthorizeSuccess': 'Повторная авторизация прошла успешно',
     'autoTrigger.noAccounts': 'Нет авторизованных аккаунтов',
     'autoTrigger.tokenExpired': 'Истек срок действия',

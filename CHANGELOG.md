@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.1]
+
+### Improved
+- **View Memory**: The extension now remembers your last active view (Dashboard or Accounts Overview) and restores it upon reopening.
+- **UX**: Added hint text in the Account Manager modal to guide users on "Switch View" vs "Switch Login" actions.
+- **i18n**: Added translations for the new hints in all supported languages.
+
 ## [2.0.0]
 
 ### Added

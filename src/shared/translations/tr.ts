@@ -378,6 +378,8 @@ export const tr = {
     'autoTrigger.accountSwitched': 'Hesap değiştirildi: {email}',
     'autoTrigger.accountDuplicate': 'Hesap {email} zaten var',
     'autoTrigger.manageAccounts': 'Hesapları yönet',
+    'autoTrigger.manageAccountsHintClick': 'Kota görünümünü değiştirmek için e-postaya tıklayın',
+    'autoTrigger.manageAccountsHintSwitch': "İstemci giriş hesabını değiştirmek için 'Girişi Değiştir'e tıklayın",
     'autoTrigger.reauthorizeSuccess': 'Yeniden yetkilendirme başarılı',
     'autoTrigger.noAccounts': 'Yetkili hesap yok',
     'autoTrigger.tokenExpired': 'Süresi doldu',

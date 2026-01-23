@@ -98,17 +98,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     quickPickView = new QuickPickView();
     lastQuotaSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
 
-    // 设置账号总览关闭回调：重新打开 Dashboard
+    // 设置账号总览关闭回调
+    // 注意：不再自动重新打开 Dashboard，而是保持用户最后的视图状态
     accountsOverview.onClose(() => {
-        // 延迟一下以确保面板已关闭
-        setTimeout(() => {
-            vscode.commands.executeCommand('agCockpit.open');
-        }, 100);
+        // 用户手动关闭面板时，不再自动打开 Dashboard
+        // 这样用户下次点击状态栏时会根据保存的状态决定打开哪个视图
+        logger.info('[AccountsOverview] Panel closed');
     });
 
     // 注册账号总览命令
     context.subscriptions.push(
         vscode.commands.registerCommand('agCockpit.openAccountsOverview', async () => {
+            // 保存视图状态：用户选择了账号总览
+            await configService.setStateValue('lastActiveView', 'accountsOverview');
             // 先关闭 Dashboard
             hud.dispose();
             // 打开账号总览
@@ -118,9 +120,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 注册从账号总览返回 Dashboard 的命令
     context.subscriptions.push(
-        vscode.commands.registerCommand('agCockpit.backToDashboard', () => {
+        vscode.commands.registerCommand('agCockpit.backToDashboard', async () => {
+            // 保存视图状态：用户选择了返回 Dashboard
+            await configService.setStateValue('lastActiveView', 'dashboard');
             accountsOverview.dispose();
-            // onClose 回调会自动打开 Dashboard
+            // 打开 Dashboard（使用 forceView 确保打开 Dashboard 而不是根据状态判断）
+            setTimeout(() => {
+                vscode.commands.executeCommand('agCockpit.open', { forceView: 'dashboard' });
+            }, 100);
         }),
     );
 
@@ -144,7 +151,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // 初始化其他控制器
     _telemetryController = new TelemetryController(reactor, statusBar, hud, quickPickView, onRetry);
     _messageController = new MessageController(context, hud, reactor, onRetry);
-    _commandController = new CommandController(context, hud, quickPickView, reactor, onRetry);
+    _commandController = new CommandController(context, hud, quickPickView, accountsOverview, reactor, onRetry);
 
     // 初始化自动触发控制器
     autoTriggerController.initialize(context);

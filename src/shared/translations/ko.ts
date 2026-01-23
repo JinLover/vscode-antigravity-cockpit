@@ -424,6 +424,8 @@ export const ko = {
     'autoTrigger.accountSwitched': '계정 전환됨: {email}',
     'autoTrigger.accountDuplicate': '계정 {email}이(가) 이미 존재합니다',
     'autoTrigger.manageAccounts': '계정 관리',
+    'autoTrigger.manageAccountsHintClick': '이메일을 클릭하여 할당량 보기를 전환합니다',
+    'autoTrigger.manageAccountsHintSwitch': "'로그인 전환'을 클릭하여 클라이언트 로그인 계정을 전환합니다",
     'autoTrigger.reauthorizeSuccess': '재인증 성공',
     'autoTrigger.noAccounts': '인증된 계정 없음',
     'autoTrigger.tokenExpired': '만료됨',

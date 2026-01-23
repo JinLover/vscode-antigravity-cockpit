@@ -434,6 +434,8 @@ export const ar = {
     'autoTrigger.accountSwitched': 'تم التبديل إلى الحساب: {email}',
     'autoTrigger.accountDuplicate': 'الحساب {email} موجود بالفعل',
     'autoTrigger.manageAccounts': 'إدارة الحسابات',
+    'autoTrigger.manageAccountsHintClick': 'اضغط على البريد الإلكتروني لتبديل عرض الحصة',
+    'autoTrigger.manageAccountsHintSwitch': 'اضغط على "تبديل تسجيل الدخول" لتبديل حساب تسجيل دخول العميل',
     'autoTrigger.reauthorizeSuccess': 'تم إعادة التفويض بنجاح',
     'autoTrigger.noAccounts': 'لا توجد حسابات مصرح بها',
     'autoTrigger.tokenExpired': 'منتهي الصلاحية',

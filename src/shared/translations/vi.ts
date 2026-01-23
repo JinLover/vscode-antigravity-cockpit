@@ -464,6 +464,8 @@ export const vi = {
     'autoTrigger.accountSwitched': 'Đã chuyển sang tài khoản: {email}',
     'autoTrigger.accountDuplicate': 'Tài khoản {email} đã tồn tại',
     'autoTrigger.manageAccounts': 'Quản lý tài khoản',
+    'autoTrigger.manageAccountsHintClick': 'Nhấp vào email để chuyển chế độ xem hạn ngạch',
+    'autoTrigger.manageAccountsHintSwitch': "Nhấp vào 'Chuyển Đăng nhập' để chuyển tài khoản đăng nhập máy khách",
     'autoTrigger.reauthorizeSuccess': 'Ủy quyền lại thành công',
     'autoTrigger.noAccounts': 'Chưa có tài khoản nào được ủy quyền',
     'autoTrigger.tokenExpired': 'Đã hết hạn',

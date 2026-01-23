@@ -428,6 +428,8 @@ export const de = {
     'autoTrigger.noAccounts': 'Keine Konten autorisiert',
     'autoTrigger.tokenExpired': 'Abgelaufen',
     'autoTrigger.antigravityToolsSync': 'Konten automatisch synchronisieren',
+    'autoTrigger.manageAccountsHintClick': 'Klicken Sie auf E-Mail, um die Quotenansicht zu wechseln',
+    'autoTrigger.manageAccountsHintSwitch': 'Klicken Sie auf "Login wechseln", um das Client-Login-Konto zu wechseln',
     'autoTrigger.importFromAntigravityTools': 'Aus Antigravity Tools importieren',
 
     // Announcement

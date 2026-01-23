@@ -441,6 +441,8 @@ export const zhCN = {
     'autoTrigger.accountSwitched': '已切换至账号: {email}',
     'autoTrigger.accountDuplicate': '账号 {email} 已存在',
     'autoTrigger.manageAccounts': '管理账号',
+    'autoTrigger.manageAccountsHintClick': '点击邮箱切换配额视图',
+    'autoTrigger.manageAccountsHintSwitch': "点击'切换登录'以切换客户端登录账号",
     'autoTrigger.reauthorizeSuccess': '重新授权成功',
     'autoTrigger.noAccounts': '暂无已授权账号',
     'autoTrigger.tokenExpired': '已过期',

@@ -166,6 +166,10 @@
                             <h3>${t('autoTrigger.manageAccounts') || 'Manage Accounts'}</h3>
                             <button class="close-btn" id="close-account-manage-modal">×</button>
                         </div>
+                        <div class="modal-hint" style="padding: 8px 16px; font-size: 12px; color: var(--text-muted); background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                            <span style="margin-right: 12px;">💡 ${t('autoTrigger.manageAccountsHintClick') || '点击邮箱可切换查看配额'}</span>
+                            <span>🔄 ${t('autoTrigger.manageAccountsHintSwitch') || '点击"切换登录"可切换客户端登录账户'}</span>
+                        </div>
                         <div class="modal-body" id="account-manage-body"></div>
                         <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
                             <button id="add-new-account-btn" class="at-btn at-btn-primary">

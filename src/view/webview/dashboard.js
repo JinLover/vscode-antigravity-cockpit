@@ -1770,6 +1770,10 @@
                         <h3>${i18n['autoTrigger.manageAccounts'] || 'Manage Accounts'}</h3>
                         <button class="close-btn" id="close-account-manage-modal">×</button>
                     </div>
+                    <div class="modal-hint" style="padding: 8px 16px; font-size: 12px; color: var(--text-muted); background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
+                        <span style="margin-right: 12px;">💡 ${i18n['autoTrigger.manageAccountsHintClick'] || '点击邮箱可切换查看配额'}</span>
+                        <span>🔄 ${i18n['autoTrigger.manageAccountsHintSwitch'] || '点击"切换登录"可切换客户端登录账户'}</span>
+                    </div>
                     <div class="modal-body" id="account-manage-body">
                         <!-- 账号列表将在这里动态渲染 -->
                     </div>

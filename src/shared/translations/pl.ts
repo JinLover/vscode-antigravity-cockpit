@@ -403,6 +403,8 @@ export const pl = {
     'autoTrigger.accountSwitched': 'Przełączono na konto: {email}',
     'autoTrigger.accountDuplicate': 'Konto {email} już istnieje',
     'autoTrigger.manageAccounts': 'Zarządzaj kontami',
+    'autoTrigger.manageAccountsHintClick': 'Kliknij e-mail, aby przełączyć widok limitu',
+    'autoTrigger.manageAccountsHintSwitch': 'Kliknij "Przełącz logowanie", aby przełączyć konto logowania klienta',
     'autoTrigger.reauthorizeSuccess': 'Ponowna autoryzacja udana',
     'autoTrigger.noAccounts': 'Brak autoryzowanych kont',
     'autoTrigger.tokenExpired': 'Wygasł',

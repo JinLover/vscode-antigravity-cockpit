@@ -394,7 +394,8 @@ export class AccountsOverviewWebview {
                 break;
 
             case 'back':
-                this.dispose();
+                // 调用返回命令，由命令处理 dispose 和打开 Dashboard
+                vscode.commands.executeCommand('agCockpit.backToDashboard');
                 break;
 
             case 'refreshAll':

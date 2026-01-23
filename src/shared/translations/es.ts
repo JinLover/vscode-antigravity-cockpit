@@ -413,6 +413,8 @@ export const es = {
     'autoTrigger.accountSwitched': 'Cambiado a la cuenta: {email}',
     'autoTrigger.accountDuplicate': 'La cuenta {email} ya existe',
     'autoTrigger.manageAccounts': 'Gestionar cuentas',
+    'autoTrigger.manageAccountsHintClick': 'Haga clic en el correo para cambiar la vista de cuota',
+    'autoTrigger.manageAccountsHintSwitch': 'Haga clic en "Cambiar inicio de sesión" para cambiar la cuenta de inicio de sesión del cliente',
     'autoTrigger.reauthorizeSuccess': 'Reautorización exitosa',
     'autoTrigger.noAccounts': 'No hay cuentas autorizadas',
     'autoTrigger.tokenExpired': 'Expirado',

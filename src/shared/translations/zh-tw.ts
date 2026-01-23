@@ -429,6 +429,8 @@ export const zhTW = {
     'autoTrigger.accountSwitched': '已切換至帳號: {email}',
     'autoTrigger.accountDuplicate': '帳號 {email} 已存在',
     'autoTrigger.manageAccounts': '管理帳號',
+    'autoTrigger.manageAccountsHintClick': '點擊信箱切換配額視圖',
+    'autoTrigger.manageAccountsHintSwitch': "點擊'切換登入'以切換客戶端登入帳號",
     'autoTrigger.reauthorizeSuccess': '重新授權成功',
     'autoTrigger.noAccounts': '暫無已授權帳號',
     'autoTrigger.tokenExpired': '已過期',

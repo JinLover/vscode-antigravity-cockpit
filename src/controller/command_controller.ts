@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import { CockpitHUD } from '../view/hud';
 import { QuickPickView } from '../view/quickpick_view';
+import { AccountsOverviewWebview } from '../view/accountsOverviewWebview';
 import { ReactorCore } from '../engine/reactor';
 import { triggerService } from '../auto_trigger/trigger_service';
 import { configService } from '../shared/config_service';
@@ -15,6 +16,7 @@ export class CommandController {
         private context: vscode.ExtensionContext,
         private hud: CockpitHUD,
         private quickPickView: QuickPickView,
+        private accountsOverview: AccountsOverviewWebview,
         private reactor: ReactorCore,
         private onRetry: () => Promise<void>,
     ) {
@@ -22,10 +24,24 @@ export class CommandController {
     }
 
     private registerCommands(): void {
-        // 打开 Dashboard
+        // 打开 Dashboard 或账号总览（根据用户上次选择的视图）
         this.context.subscriptions.push(
-            vscode.commands.registerCommand('agCockpit.open', async (options?: { tab?: string }) => {
+            vscode.commands.registerCommand('agCockpit.open', async (options?: { tab?: string; forceView?: 'dashboard' | 'accountsOverview' }) => {
                 const config = configService.getConfig();
+                
+                // 检查用户上次选择的视图状态
+                const lastActiveView = configService.getStateValue<string>('lastActiveView', 'dashboard');
+                const targetView = options?.forceView || lastActiveView;
+                
+                // 如果用户上次选择的是账号总览，则打开账号总览
+                if (targetView === 'accountsOverview') {
+                    logger.info('[CommandController] Opening AccountsOverview (last active view)');
+                    this.hud.dispose();
+                    await this.accountsOverview.show();
+                    return;
+                }
+                
+                // 否则打开 Dashboard
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
                     this.quickPickView.show();
                 } else {

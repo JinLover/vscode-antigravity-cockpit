@@ -378,6 +378,8 @@ export const cs = {
     'autoTrigger.accountSwitched': 'Přepnuto na účet: {email}',
     'autoTrigger.accountDuplicate': 'Účet {email} již existuje',
     'autoTrigger.manageAccounts': 'Spravovat účty',
+    'autoTrigger.manageAccountsHintClick': 'Kliknutím na e-mail přepnete zobrazení kvóty',
+    'autoTrigger.manageAccountsHintSwitch': 'Kliknutím na "Přepnout přihlášení" přepnete přihlašovací účet klienta',
     'autoTrigger.reauthorizeSuccess': 'Opětovná autorizace úspěšná',
     'autoTrigger.noAccounts': 'Žádné autorizované účty',
     'autoTrigger.tokenExpired': 'Vypršelo',

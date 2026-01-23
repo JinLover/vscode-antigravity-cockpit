@@ -424,6 +424,8 @@ export const ptBR = {
     'autoTrigger.accountSwitched': 'Trocado para a conta: {email}',
     'autoTrigger.accountDuplicate': 'A conta {email} já existe',
     'autoTrigger.manageAccounts': 'Gerenciar contas',
+    'autoTrigger.manageAccountsHintClick': 'Clique no e-mail para mudar a visualização de cota',
+    'autoTrigger.manageAccountsHintSwitch': "Clique em 'Mudar Login' para mudar a conta de login do cliente",
     'autoTrigger.reauthorizeSuccess': 'Reautorização bem-sucedida',
     'autoTrigger.noAccounts': 'Nenhuma conta autorizada',
     'autoTrigger.tokenExpired': 'Expirado',
