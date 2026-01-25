@@ -495,6 +495,7 @@ export class CockpitHUD {
         <button class="tab-btn" data-tab="auto-trigger">
             ${t('autoTrigger.tabTitle')} <span id="at-tab-status-dot" class="status-dot hidden">●</span>
         </button>
+        <button class="tab-btn" data-tab="history">📈 ${t('history.tabTitle')}</button>
         <div id="quota-source-info" class="quota-source-info hidden"></div>
         <div class="tab-spacer"></div>
         <div class="quota-source-toggle">
@@ -575,6 +576,57 @@ export class CockpitHUD {
                         📜 ${t('autoTrigger.historyBtn')} <span id="at-history-count">(0)</span>
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Tab Content -->
+    <div id="tab-history" class="tab-content">
+        <div class="history-card">
+            <div class="history-header">
+                <div class="history-title">📈 ${t('history.title')}</div>
+                <div class="history-controls">
+                    <label class="history-label" for="history-account-select">${t('history.accountLabel')}</label>
+                    <select id="history-account-select" class="history-select"></select>
+                    <label class="history-label" for="history-model-select">${t('history.modelLabel')}</label>
+                    <select id="history-model-select" class="history-select"></select>
+                    <div class="history-range">
+                        <button class="history-range-btn" data-range="1">${t('history.range24h')}</button>
+                        <button class="history-range-btn" data-range="7">${t('history.range7d')}</button>
+                        <button class="history-range-btn" data-range="30">${t('history.range30d')}</button>
+                    </div>
+                </div>
+            </div>
+            <div class="history-body">
+                <canvas id="history-chart" class="history-canvas"></canvas>
+                <div id="history-empty" class="history-empty hidden">${t('history.noData')}</div>
+            </div>
+            <div class="history-details">
+                <div class="history-details-title">${t('history.tableTitle')}</div>
+                <div class="history-table-wrapper">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>${t('history.tableTime')}</th>
+                                <th>${t('history.tablePercent')}</th>
+                                <th>${t('history.tableDelta')}</th>
+                                <th>${t('history.tableResetTime')}</th>
+                                <th>${t('history.tableCountdown')}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body"></tbody>
+                    </table>
+                    <div id="history-table-empty" class="history-table-empty hidden">${t('history.tableEmpty')}</div>
+                </div>
+                <div class="history-pagination">
+                    <button id="history-prev" class="history-page-btn">${t('history.paginationPrev')}</button>
+                    <span id="history-page-info" class="history-page-info"></span>
+                    <button id="history-next" class="history-page-btn">${t('history.paginationNext')}</button>
+                </div>
+            </div>
+            <div class="history-footer">
+                <div id="history-metric-label" class="history-metric"></div>
+                <div id="history-summary" class="history-summary"></div>
             </div>
         </div>
     </div>

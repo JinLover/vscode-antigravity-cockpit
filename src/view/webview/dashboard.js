@@ -3,6 +3,8 @@
  * 处理 Webview 交互逻辑
  */
 
+import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../shared/recommended_models';
+
 (function () {
     'use strict';
 
@@ -21,6 +23,18 @@
     const modelManagerList = document.getElementById('model-manager-list');
     const modelManagerCount = document.getElementById('model-manager-count');
     const quotaSourceInfo = document.getElementById('quota-source-info');
+    const historyAccountSelect = document.getElementById('history-account-select');
+    const historyModelSelect = document.getElementById('history-model-select');
+    const historyRangeButtons = document.querySelectorAll('.history-range-btn');
+    const historyCanvas = document.getElementById('history-chart');
+    const historyEmpty = document.getElementById('history-empty');
+    const historyMetricLabel = document.getElementById('history-metric-label');
+    const historySummary = document.getElementById('history-summary');
+    const historyTableBody = document.getElementById('history-table-body');
+    const historyTableEmpty = document.getElementById('history-table-empty');
+    const historyPrevBtn = document.getElementById('history-prev');
+    const historyNextBtn = document.getElementById('history-next');
+    const historyPageInfo = document.getElementById('history-page-info');
 
     // 国际化文本
     const i18n = window.__i18n || {};
@@ -50,30 +64,21 @@
     let isDataMasked = false;     // 控制数据是否显示为 ***
     let modelManagerSelection = new Set();
     let modelManagerModels = [];
+    const historyState = {
+        rangeDays: 7,
+        selectedEmail: null,
+        selectedModelId: null,
+        accounts: [],
+        models: [],
+        points: [],
+        page: 1,
+        pageSize: 20,
+        needsRender: false,
+    };
 
     // 刷新冷却时间（秒）
     let refreshCooldown = 10;
 
-    const AUTH_RECOMMENDED_LABELS = [
-        'Claude Opus 4.5 (Thinking)',
-        'Claude Sonnet 4.5',
-        'Claude Sonnet 4.5 (Thinking)',
-        'Gemini 3 Flash',
-        'Gemini 3 Pro (High)',
-        'Gemini 3 Pro (Low)',
-        'Gemini 3 Pro Image',
-        'GPT-OSS 120B (Medium)'
-    ];
-    const AUTH_RECOMMENDED_MODEL_IDS = [
-        'MODEL_PLACEHOLDER_M12',
-        'MODEL_CLAUDE_4_5_SONNET',
-        'MODEL_CLAUDE_4_5_SONNET_THINKING',
-        'MODEL_PLACEHOLDER_M18',
-        'MODEL_PLACEHOLDER_M7',
-        'MODEL_PLACEHOLDER_M8',
-        'MODEL_PLACEHOLDER_M9',
-        'MODEL_OPENAI_GPT_OSS_120B_MEDIUM'
-    ];
     const normalizeRecommendedKey = value => (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const AUTH_RECOMMENDED_LABEL_RANK = new Map(
         AUTH_RECOMMENDED_LABELS.map((label, index) => [label, index])
@@ -259,6 +264,8 @@
 
         // Tab 导航切换
         initTabNavigation();
+        initHistoryTab();
+        window.addEventListener('resize', handleHistoryResize);
 
         renderLoadingCard(currentQuotaSource);
 
@@ -291,8 +298,529 @@
 
                 // 通知扩展 Tab 切换（可用于状态同步）
                 vscode.postMessage({ command: 'tabChanged', tab: targetTab });
+                if (targetTab === 'history') {
+                    activateHistoryTab();
+                }
             });
         });
+    }
+
+    // ============ 历史记录 Tab ============
+
+    function initHistoryTab() {
+        if (historyAccountSelect) {
+            historyAccountSelect.addEventListener('change', () => {
+                historyState.selectedEmail = historyAccountSelect.value || null;
+                historyState.page = 1;
+                requestQuotaHistory();
+            });
+        }
+
+        if (historyModelSelect) {
+            historyModelSelect.addEventListener('change', () => {
+                historyState.selectedModelId = historyModelSelect.value || null;
+                historyState.page = 1;
+                requestQuotaHistory();
+            });
+        }
+
+        historyRangeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const range = normalizeHistoryRange(parseInt(btn.dataset.range || '', 10));
+                if (historyState.rangeDays === range) {
+                    return;
+                }
+                historyState.rangeDays = range;
+                updateHistoryRangeButtons();
+                historyState.page = 1;
+                requestQuotaHistory();
+            });
+        });
+
+        if (historyPrevBtn) {
+            historyPrevBtn.addEventListener('click', () => {
+                if (historyState.page > 1) {
+                    historyState.page -= 1;
+                    renderHistoryDetails();
+                }
+            });
+        }
+
+        if (historyNextBtn) {
+            historyNextBtn.addEventListener('click', () => {
+                historyState.page += 1;
+                renderHistoryDetails();
+            });
+        }
+
+        updateHistoryRangeButtons();
+    }
+
+    function handleHistoryResize() {
+        if (!isHistoryTabActive()) {
+            historyState.needsRender = true;
+            return;
+        }
+        renderHistoryChart();
+    }
+
+    function normalizeHistoryRange(rangeDays) {
+        if (typeof rangeDays !== 'number' || !Number.isFinite(rangeDays) || rangeDays <= 0) {
+            return 7;
+        }
+        if (rangeDays <= 1) {
+            return 1;
+        }
+        if (rangeDays <= 7) {
+            return 7;
+        }
+        return 30;
+    }
+
+    function isHistoryTabActive() {
+        const tab = document.getElementById('tab-history');
+        return Boolean(tab && tab.classList.contains('active'));
+    }
+
+    function activateHistoryTab() {
+        updateHistoryRangeButtons();
+        updateHistoryAccountSelect();
+        updateHistoryModelSelect();
+        requestQuotaHistory();
+        if (historyState.needsRender) {
+            renderHistoryChart();
+            renderHistoryDetails();
+        }
+    }
+
+    function requestQuotaHistory() {
+        if (!historyCanvas || !isHistoryTabActive()) {
+            return;
+        }
+        const rangeDays = normalizeHistoryRange(historyState.rangeDays);
+        historyState.rangeDays = rangeDays;
+        vscode.postMessage({
+            command: 'quotaHistory.get',
+            email: historyState.selectedEmail || undefined,
+            modelId: historyState.selectedModelId || undefined,
+            rangeDays,
+        });
+    }
+
+    function handleQuotaHistoryData(payload) {
+        const data = payload || {};
+        const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+        historyState.accounts = accounts;
+        historyState.models = Array.isArray(data.models) ? data.models : [];
+        if (typeof data.rangeDays === 'number') {
+            historyState.rangeDays = normalizeHistoryRange(data.rangeDays);
+        }
+        if (typeof data.email === 'string' && data.email.includes('@')) {
+            historyState.selectedEmail = data.email;
+        }
+        if (typeof data.modelId === 'string') {
+            historyState.selectedModelId = data.modelId;
+        }
+        historyState.points = Array.isArray(data.points) ? data.points : [];
+        historyState.page = 1;
+
+        updateHistoryAccountSelect();
+        updateHistoryModelSelect();
+        updateHistoryRangeButtons();
+        updateHistoryFooter();
+        if (isHistoryTabActive()) {
+            renderHistoryChart();
+            renderHistoryDetails();
+        } else {
+            historyState.needsRender = true;
+        }
+    }
+
+    function updateHistoryAccountSelect() {
+        if (!historyAccountSelect) {
+            return;
+        }
+        historyAccountSelect.innerHTML = '';
+
+        const accounts = Array.isArray(historyState.accounts) ? historyState.accounts : [];
+        if (accounts.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = i18n['history.noAccounts'] || 'No accounts';
+            historyAccountSelect.appendChild(option);
+            historyAccountSelect.disabled = true;
+            historyState.selectedEmail = null;
+            return;
+        }
+
+        historyAccountSelect.disabled = false;
+        accounts.forEach(email => {
+            const option = document.createElement('option');
+            option.value = email;
+            option.textContent = email;
+            historyAccountSelect.appendChild(option);
+        });
+
+        if (!historyState.selectedEmail || !accounts.includes(historyState.selectedEmail)) {
+            historyState.selectedEmail = accounts[0];
+        }
+        historyAccountSelect.value = historyState.selectedEmail || '';
+    }
+
+    function updateHistoryModelSelect() {
+        if (!historyModelSelect) {
+            return;
+        }
+        historyModelSelect.innerHTML = '';
+
+        const models = Array.isArray(historyState.models) ? historyState.models : [];
+        if (models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = i18n['history.noModels'] || (i18n['models.empty'] || 'No models');
+            historyModelSelect.appendChild(option);
+            historyModelSelect.disabled = true;
+            historyState.selectedModelId = null;
+            return;
+        }
+
+        historyModelSelect.disabled = false;
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.modelId;
+            option.textContent = model.label || model.modelId;
+            historyModelSelect.appendChild(option);
+        });
+
+        const modelIds = models.map(model => model.modelId);
+        if (!historyState.selectedModelId || !modelIds.includes(historyState.selectedModelId)) {
+            historyState.selectedModelId = models[0].modelId;
+        }
+        historyModelSelect.value = historyState.selectedModelId || '';
+    }
+
+    function updateHistoryRangeButtons() {
+        historyRangeButtons.forEach(btn => {
+            const range = normalizeHistoryRange(parseInt(btn.dataset.range || '', 10));
+            if (range === historyState.rangeDays) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function getSelectedModelLabel() {
+        const models = Array.isArray(historyState.models) ? historyState.models : [];
+        const selected = models.find(model => model.modelId === historyState.selectedModelId);
+        return selected?.label || selected?.modelId || '';
+    }
+
+    function getHistoryPoints() {
+        if (!Array.isArray(historyState.points)) {
+            return [];
+        }
+        return historyState.points
+            .filter(point =>
+                point
+                && typeof point.timestamp === 'number'
+                && Number.isFinite(point.timestamp)
+                && typeof point.remainingPercentage === 'number'
+                && Number.isFinite(point.remainingPercentage),
+            )
+            .sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    function updateHistoryFooter() {
+        if (!historyMetricLabel || !historySummary) {
+            return;
+        }
+        const modelLabel = getSelectedModelLabel();
+        if (modelLabel) {
+            historyMetricLabel.textContent = `${i18n['history.modelLabel'] || 'Model'}: ${modelLabel}`;
+        } else {
+            historyMetricLabel.textContent = '';
+        }
+
+        const points = getHistoryPoints();
+        if (points.length === 0) {
+            historySummary.textContent = '';
+            return;
+        }
+
+        const latest = points[points.length - 1];
+        const summaryParts = [];
+        summaryParts.push(`${i18n['history.currentValue'] || 'Current'}: ${formatHistoryPercent(latest.remainingPercentage)}`);
+        if (typeof latest.resetTime === 'number' && Number.isFinite(latest.resetTime)) {
+            summaryParts.push(`${i18n['history.resetTime'] || 'Reset'}: ${formatHistoryTimestamp(latest.resetTime)}`);
+        }
+        if (typeof latest.countdownSeconds === 'number' && Number.isFinite(latest.countdownSeconds)) {
+            summaryParts.push(`${i18n['history.countdown'] || 'Countdown'}: ${formatHistoryCountdown(latest.countdownSeconds)}`);
+        }
+        summaryParts.push(`${i18n['history.updatedAt'] || 'Updated'}: ${formatHistoryTimestamp(latest.timestamp)}`);
+        historySummary.textContent = summaryParts.join(' · ');
+    }
+
+    function renderHistoryChart() {
+        if (!historyCanvas) {
+            return;
+        }
+        if (!isHistoryTabActive()) {
+            historyState.needsRender = true;
+            return;
+        }
+
+        const rect = historyCanvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+            historyState.needsRender = true;
+            return;
+        }
+        historyState.needsRender = false;
+
+        const ctx = historyCanvas.getContext('2d');
+        if (!ctx) {
+            return;
+        }
+
+        const dpr = window.devicePixelRatio || 1;
+        historyCanvas.width = Math.max(1, Math.round(rect.width * dpr));
+        historyCanvas.height = Math.max(1, Math.round(rect.height * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        const points = getHistoryPoints();
+        const hasPoints = points.length > 0;
+        if (historyEmpty) {
+            const emptyMessage = historyState.accounts.length === 0
+                ? (i18n['history.noAccounts'] || 'No accounts')
+                : (historyState.models.length === 0
+                    ? (i18n['history.noModels'] || 'No models')
+                    : (i18n['history.noData'] || 'No history yet.'));
+            historyEmpty.textContent = emptyMessage;
+            historyEmpty.classList.toggle('hidden', hasPoints);
+        }
+        if (!hasPoints) {
+            return;
+        }
+
+        const width = rect.width;
+        const height = rect.height;
+        const padding = {
+            left: 52,
+            right: 20,
+            top: 20,
+            bottom: 24,
+        };
+        const chartWidth = Math.max(1, width - padding.left - padding.right);
+        const chartHeight = Math.max(1, height - padding.top - padding.bottom);
+        const now = Date.now();
+        const rangeMs = normalizeHistoryRange(historyState.rangeDays) * 24 * 60 * 60 * 1000;
+        const startTime = now - rangeMs;
+        const endTime = now;
+
+        const accent = getCssVar('--accent', '#2f81f7');
+        const gridColor = getCssVar('--border-color', 'rgba(255,255,255,0.08)');
+        const textSecondary = getCssVar('--text-secondary', '#8b949e');
+
+        ctx.save();
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        for (let i = 0; i <= 5; i++) {
+            const y = padding.top + (chartHeight / 5) * i;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(width - padding.right, y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = textSecondary;
+        ctx.font = `11px ${getCssVar('--font-family', 'sans-serif')}`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const labelX = Math.max(12, padding.left - 8);
+        for (let i = 0; i <= 5; i++) {
+            const value = 100 - i * 20;
+            const y = padding.top + (chartHeight / 5) * i;
+            ctx.fillText(`${value}%`, labelX, y);
+        }
+        ctx.restore();
+
+        const coords = points.map(point => {
+            const clamped = Math.min(100, Math.max(0, point.remainingPercentage));
+            const ratio = (point.timestamp - startTime) / (endTime - startTime);
+            const x = padding.left + Math.min(1, Math.max(0, ratio)) * chartWidth;
+            const y = padding.top + (1 - clamped / 100) * chartHeight;
+            return { x, y, raw: point };
+        });
+
+        if (coords.length === 1) {
+            ctx.fillStyle = accent;
+            ctx.beginPath();
+            ctx.arc(coords[0].x, coords[0].y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.moveTo(coords[0].x, coords[0].y);
+        coords.forEach(point => ctx.lineTo(point.x, point.y));
+        ctx.lineTo(coords[coords.length - 1].x, padding.top + chartHeight);
+        ctx.lineTo(coords[0].x, padding.top + chartHeight);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        coords.forEach((point, index) => {
+            if (index === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                ctx.lineTo(point.x, point.y);
+            }
+        });
+        ctx.stroke();
+
+        ctx.fillStyle = accent;
+        coords.forEach(point => {
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        const last = coords[coords.length - 1];
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function renderHistoryDetails() {
+        if (!historyTableBody || !historyPageInfo || !historyPrevBtn || !historyNextBtn) {
+            return;
+        }
+
+        const pointsDesc = getHistoryPoints().slice().sort((a, b) => b.timestamp - a.timestamp);
+        const total = pointsDesc.length;
+        const pageSize = historyState.pageSize;
+        const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
+
+        if (total === 0) {
+            historyTableBody.innerHTML = '';
+            if (historyTableEmpty) {
+                historyTableEmpty.textContent = i18n['history.tableEmpty'] || (i18n['history.noData'] || 'No data');
+                historyTableEmpty.classList.remove('hidden');
+            }
+            historyPageInfo.textContent = '';
+            historyPrevBtn.disabled = true;
+            historyNextBtn.disabled = true;
+            return;
+        }
+
+        if (historyTableEmpty) {
+            historyTableEmpty.classList.add('hidden');
+        }
+
+        historyState.page = Math.min(Math.max(historyState.page, 1), totalPages);
+        const start = (historyState.page - 1) * pageSize;
+        const pagePoints = pointsDesc.slice(start, start + pageSize);
+
+        historyTableBody.innerHTML = pagePoints.map((point, index) => {
+            const nextPoint = pointsDesc[start + index + 1];
+            const delta = nextPoint
+                ? point.remainingPercentage - nextPoint.remainingPercentage
+                : null;
+            const deltaText = delta === null ? '--' : formatHistoryDelta(delta);
+            const deltaClass = delta === null
+                ? 'neutral'
+                : (delta > 0 ? 'positive' : (delta < 0 ? 'negative' : 'neutral'));
+
+            return `
+                <tr>
+                    <td>${formatHistoryTimestamp(point.timestamp)}</td>
+                    <td>${formatHistoryPercent(point.remainingPercentage)}</td>
+                    <td class="history-delta ${deltaClass}">${deltaText}</td>
+                    <td>${formatHistoryTimestamp(point.resetTime)}</td>
+                    <td>${formatHistoryCountdownLabel(point.countdownSeconds, point.isStart)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const pageInfo = i18n['history.pageInfo'] || 'Page {current} / {total}';
+        historyPageInfo.textContent = pageInfo
+            .replace('{current}', String(historyState.page))
+            .replace('{total}', String(totalPages));
+        historyPrevBtn.disabled = historyState.page <= 1;
+        historyNextBtn.disabled = historyState.page >= totalPages;
+    }
+
+    function formatHistoryPercent(value) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return '--';
+        }
+        const rounded = Math.round(value * 10) / 10;
+        return `${rounded}%`;
+    }
+
+    function formatHistoryDelta(value) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return '--';
+        }
+        const rounded = Math.round(value * 10) / 10;
+        const sign = rounded > 0 ? '+' : '';
+        return `${sign}${rounded}%`;
+    }
+
+    function formatHistoryCountdown(seconds) {
+        if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+            return '--';
+        }
+        if (seconds <= 0) {
+            return i18n['dashboard.online'] || 'Restoring Soon';
+        }
+        const totalMinutes = Math.ceil(seconds / 60);
+        if (totalMinutes < 60) {
+            return `${totalMinutes}m`;
+        }
+        const totalHours = Math.floor(totalMinutes / 60);
+        const remainingMinutes = totalMinutes % 60;
+        if (totalHours < 24) {
+            return `${totalHours}h ${remainingMinutes}m`;
+        }
+        const days = Math.floor(totalHours / 24);
+        const remainingHours = totalHours % 24;
+        return `${days}d ${remainingHours}h ${remainingMinutes}m`;
+    }
+
+    function formatHistoryCountdownLabel(seconds, isStart) {
+        const text = formatHistoryCountdown(seconds);
+        if (!isStart) {
+            return text;
+        }
+        if (text === '--') {
+            return 'START';
+        }
+        return `START ${text}`;
+    }
+
+    function formatHistoryTimestamp(timestamp) {
+        if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) {
+            return '--';
+        }
+        return new Date(timestamp).toLocaleString();
+    }
+
+    function getCssVar(name, fallback) {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+        const trimmed = value ? value.trim() : '';
+        return trimmed || fallback;
     }
 
     // ============ 设置模态框 ============
@@ -728,8 +1256,24 @@
             render(message.data, message.config);
             lastSnapshot = message.data; // Update global snapshot
             updateQuotaSourceUI(message.data?.isConnected);
+            if (isHistoryTabActive()) {
+                requestQuotaHistory();
+            }
 
             // 自动同步已移至后端 TelemetryController 处理，前端不再主动触发
+        }
+
+        if (message.type === 'quotaHistoryData') {
+            handleQuotaHistoryData(message.data);
+        }
+        if (message.type === 'quotaHistoryUpdated') {
+            const updatedEmail = message.data?.email;
+            if (isHistoryTabActive()) {
+                if (updatedEmail && historyState.selectedEmail && updatedEmail !== historyState.selectedEmail) {
+                    return;
+                }
+                requestQuotaHistory();
+            }
         }
 
         if (message.type === 'autoTriggerState') {
@@ -2219,6 +2763,10 @@
                 content.classList.remove('active');
             }
         });
+
+        if (tabId === 'history') {
+            activateHistoryTab();
+        }
     }
 
     // ============ 刷新按钮逻辑 ============

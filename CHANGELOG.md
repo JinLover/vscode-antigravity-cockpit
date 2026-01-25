@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1.0] - 2026-01-26
+
+### Added
+- **Quota History**: History tab to track quota changes.
+  - Account/model filters with 24h/7d/30d ranges.
+  - Chart + paginated details table (remaining %, delta, reset time, countdown).
+  - Local history snapshots; START tag on the first countdown drop at 100%.
+  - Auto-refresh while the history tab is active.
+
+### Changed
+- **Local Auth Import**: Switched sql.js to the wasm build and copy wasm assets during build.
+- **Packaging**: Exclude `out/sql-asm.js` and `out/view/webview/chart.js` from the extension package.
+- **Model Definitions**: Centralized recommended model constants for reuse across frontend/backend.
+
+
 ## [2.0.3] - 2026-01-25
 
 ### Added

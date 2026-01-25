@@ -7,6 +7,7 @@ import { syncAccountsWithCockpitTools } from './cockpitToolsSync';
 import { configService } from '../shared/config_service';
 import { QuotaSnapshot } from '../shared/types';
 import { t } from '../shared/i18n';
+import { recordQuotaHistory } from './quota_history';
 
 export interface AccountQuotaCache {
     snapshot: QuotaSnapshot;
@@ -201,6 +202,7 @@ export class AccountsRefreshService {
             cache.fetchedAt = Date.now();
             cache.loading = false;
             cache.error = undefined;
+            void recordQuotaHistory(email, snapshot);
             logger.info(`[AccountsRefresh] Loaded quota for ${email}: ${snapshot.models.length} models, ${snapshot.groups?.length ?? 0} groups`);
         } catch (err) {
             const error = err instanceof Error ? err.message : String(err);
@@ -352,6 +354,7 @@ export class AccountsRefreshService {
                 error: undefined,
             };
             this.quotaCache.set(email, cache);
+            void recordQuotaHistory(email, snapshot);
             this.emitUpdate();
             logger.info(`[AccountsRefresh] Refreshed quota for ${email}: ${snapshot.models.length} models, ${snapshot.groups?.length ?? 0} groups`);
         } catch (err) {

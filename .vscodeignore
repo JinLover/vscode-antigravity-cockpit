@@ -9,6 +9,8 @@ tmp/**
 src/**
 out/**/*.map
 out/**/*.d.ts
+out/view/webview/chart.js
+out/sql-asm.js
 
 # Exclude configuration files
 .gitignore

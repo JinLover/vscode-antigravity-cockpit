@@ -12,6 +12,7 @@ import { QUOTA_THRESHOLDS, TIMING } from '../shared/constants';
 import { credentialStorage, autoTriggerController } from '../auto_trigger';
 import { announcementService } from '../announcement';
 import { antigravityToolsSyncService } from '../antigravityTools_sync';
+import { recordQuotaHistory } from '../services/quota_history';
 
 
 export class TelemetryController {
@@ -103,6 +104,29 @@ export class TelemetryController {
                 antigravityToolsSyncEnabled: configService.getStateFlag('antigravityToolsSyncEnabled', false),
                 antigravityToolsAutoSwitchEnabled: configService.getStateFlag('antigravityToolsAutoSwitchEnabled', true),
             });
+
+            const snapshotEmail = snapshot.userInfo?.email;
+            const localEmail = snapshot.localAccountEmail;
+            let historyEmail = (snapshotEmail && snapshotEmail.includes('@')) ? snapshotEmail : null;
+            if (!historyEmail && localEmail && localEmail.includes('@')) {
+                historyEmail = localEmail;
+            }
+            if (!historyEmail) {
+                const activeEmail = await credentialStorage.getActiveAccount();
+                if (activeEmail && activeEmail.includes('@')) {
+                    historyEmail = activeEmail;
+                }
+            }
+            if (historyEmail) {
+                void recordQuotaHistory(historyEmail, snapshot).then(changed => {
+                    if (changed && this.hud.isVisible()) {
+                        this.hud.sendMessage({
+                            type: 'quotaHistoryUpdated',
+                            data: { email: historyEmail },
+                        });
+                    }
+                });
+            }
 
             // 更新 QuickPick 视图数据
             this.quickPickView.updateSnapshot(snapshot);

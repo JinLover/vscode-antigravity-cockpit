@@ -360,6 +360,8 @@ export type WebviewMessageType =
     | 'announcement.getState'
     | 'announcement.markAsRead'
     | 'announcement.markAllAsRead'
+    // Quota History
+    | 'quotaHistory.get'
     // Antigravity Tools Sync
     | 'antigravityToolsSync.import'
     | 'antigravityToolsSync.importAuto'
@@ -426,6 +428,8 @@ export interface WebviewMessage {
     maxOutputTokens?: number;
     /** 账号邮箱 (autoTrigger.removeAccount, autoTrigger.switchAccount) */
     email?: string;
+    /** 历史范围天数 (quotaHistory.get) */
+    rangeDays?: number;
     // Announcements
     /** 公告 ID (announcement.markAsRead) */
     id?: string;

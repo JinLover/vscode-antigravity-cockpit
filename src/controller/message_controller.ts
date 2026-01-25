@@ -13,6 +13,7 @@ import { previewLocalCredential, commitLocalCredential } from '../auto_trigger/l
 import { announcementService } from '../announcement';
 import { antigravityToolsSyncService } from '../antigravityTools_sync';
 import { cockpitToolsWs, AccountInfo } from '../services/cockpitToolsWs';
+import { getQuotaHistory } from '../services/quota_history';
 
 export class MessageController {
     // 跟踪已通知的模型以避免重复弹窗 (虽然主要逻辑在 TelemetryController，但 CheckAndNotify 可能被消息触发吗? 不, 主要是 handleMessage)
@@ -551,6 +552,38 @@ export class MessageController {
                         });
                     }
                     break;
+
+                case 'quotaHistory.get': {
+                    const isValidEmail = (value?: string | null) => typeof value === 'string' && value.includes('@');
+                    const requestedEmail = message.email;
+                    const activeEmail = await credentialStorage.getActiveAccount();
+                    const latestSnapshot = this.reactor.getLatestSnapshot();
+                    const snapshotEmail = latestSnapshot?.userInfo?.email || latestSnapshot?.localAccountEmail || null;
+                    const resolvedEmail = isValidEmail(requestedEmail)
+                        ? requestedEmail
+                        : (isValidEmail(activeEmail) ? activeEmail : (isValidEmail(snapshotEmail) ? snapshotEmail : null));
+
+                    const credentials = await credentialStorage.getAllCredentials();
+                    const accounts = Object.keys(credentials);
+                    if (isValidEmail(snapshotEmail) && !accounts.includes(snapshotEmail)) {
+                        accounts.push(snapshotEmail);
+                    }
+                    accounts.sort();
+
+                    const history = await getQuotaHistory(resolvedEmail, message.rangeDays, message.modelId);
+                    this.hud.sendMessage({
+                        type: 'quotaHistoryData',
+                        data: {
+                            email: resolvedEmail,
+                            accounts,
+                            rangeDays: history?.rangeDays ?? message.rangeDays,
+                            modelId: history?.modelId ?? message.modelId ?? null,
+                            models: history?.models || [],
+                            points: history?.points || [],
+                        },
+                    });
+                    break;
+                }
 
                 case 'autoTrigger.authorize':
                     logger.info('User triggered OAuth authorization');

@@ -1,8 +1,8 @@
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-// 使用 sql.js 的纯 JavaScript 版本（不需要 .wasm 文件）
-import initSqlJs, { Database } from 'sql.js/dist/sql-asm.js';
+// 使用 sql.js 的 wasm 版本（需要 .wasm 文件）
+import initSqlJs, { Database } from 'sql.js/dist/sql-wasm.js';
 import { credentialStorage } from './credential_storage';
 import { oauthService } from './oauth_service';
 import { OAuthCredential } from './types';
@@ -15,8 +15,9 @@ let sqlJsPromise: ReturnType<typeof initSqlJs> | null = null;
 
 async function getSqlJs(): Promise<Awaited<ReturnType<typeof initSqlJs>>> {
     if (!sqlJsPromise) {
-        // 纯 JavaScript 版本不需要加载 .wasm 文件
-        sqlJsPromise = initSqlJs();
+        sqlJsPromise = initSqlJs({
+            locateFile: (file: string) => path.join(__dirname, file),
+        });
     }
     return sqlJsPromise;
 }

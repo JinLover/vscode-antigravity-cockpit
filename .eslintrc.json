@@ -120,7 +120,7 @@
       "parser": "espree",
       "parserOptions": {
         "ecmaVersion": 2020,
-        "sourceType": "script",
+        "sourceType": "module",
         "project": null
       },
       "env": {
@@ -161,4 +161,3 @@
     "**/*.d.ts"
   ]
 }
-

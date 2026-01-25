@@ -113,6 +113,14 @@ async function build() {
     fs.copyFileSync('./src/view/webview/shared_modals.css', './out/view/webview/shared_modals.css');
     fs.copyFileSync('./src/view/webview/auto_trigger.css', './out/view/webview/auto_trigger.css');
     fs.copyFileSync('./src/view/webview/accounts_overview.css', './out/view/webview/accounts_overview.css');
+
+    const sqlWasmSrc = path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm');
+    const sqlWasmDest = path.join(__dirname, '../out/sql-wasm.wasm');
+    fs.copyFileSync(sqlWasmSrc, sqlWasmDest);
+
+    const sqlWasmJsSrc = path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.js');
+    const sqlWasmJsDest = path.join(__dirname, '../out/sql-wasm.js');
+    fs.copyFileSync(sqlWasmJsSrc, sqlWasmJsDest);
 }
 
 build().catch(err => {

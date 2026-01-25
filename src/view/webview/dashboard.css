@@ -2551,6 +2551,219 @@ input:checked+.slider:before {
     display: block;
 }
 
+/* ============ History Tab ============ */
+
+.history-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.history-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.history-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.history-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-select {
+    background: var(--vscode-input-background, #0d1117);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 180px;
+}
+
+.history-range {
+    display: flex;
+    gap: 6px;
+}
+
+.history-range-btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-range-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+.history-range-btn.active {
+    color: var(--text-primary);
+    border-color: var(--accent);
+    background: rgba(47, 129, 247, 0.2);
+}
+
+.history-body {
+    position: relative;
+    width: 100%;
+    height: 240px;
+}
+
+.history-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+}
+
+.history-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+    padding: 0 16px;
+}
+
+.history-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-details-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-table-wrapper {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.history-table th,
+.history-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.history-table th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.history-table tr:last-child td {
+    border-bottom: none;
+}
+
+.history-table-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 16px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.history-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.history-page-btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.history-page-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-delta.positive {
+    color: var(--success);
+}
+
+.history-delta.negative {
+    color: var(--danger);
+}
+
+.history-delta.neutral {
+    color: var(--text-secondary);
+}
+
+.history-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.history-metric {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
 /* ============ Antigravity Tools 同步配置弹框 ============ */
 
 .at-sync-config-content {
