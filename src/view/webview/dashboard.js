@@ -436,6 +436,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function activateHistoryTab() {
+        // Auto-switch to active account when entering tab
+        const activeEmail = authorizationStatus?.activeAccount;
+        if (activeEmail) {
+            historyState.selectedEmail = activeEmail;
+        }
+
         updateHistoryRangeButtons();
         updateHistoryAccountSelect();
         updateHistoryModelSelect();
@@ -512,18 +518,25 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             return;
         }
 
+        const activeEmail = authorizationStatus?.activeAccount;
         historyAccountSelect.disabled = false;
         accounts.forEach(email => {
             const option = document.createElement('option');
             option.value = email;
-            option.textContent = email;
+            const isCurrent = activeEmail && email === activeEmail;
+            option.textContent = isCurrent ? `✅ ${email}` : email;
             historyAccountSelect.appendChild(option);
         });
 
-        if (!historyState.selectedEmail || !accounts.includes(historyState.selectedEmail)) {
+        if (historyState.selectedEmail && accounts.includes(historyState.selectedEmail)) {
+            historyAccountSelect.value = historyState.selectedEmail;
+        } else if (activeEmail && accounts.includes(activeEmail)) {
+            historyAccountSelect.value = activeEmail;
+            historyState.selectedEmail = activeEmail;
+        } else {
             historyState.selectedEmail = accounts[0];
+            historyAccountSelect.value = accounts[0];
         }
-        historyAccountSelect.value = historyState.selectedEmail || '';
     }
 
     function updateHistoryModelSelect() {
@@ -2663,26 +2676,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function updateQuotaSourceInfo() {
-        if (!quotaSourceInfo) {
-            return;
-        }
-        if (isQuotaSourceSwitching || !lastSnapshot || !lastSnapshot.isConnected) {
+        if (quotaSourceInfo) {
             quotaSourceInfo.classList.add('hidden');
-            return;
         }
-        const isAuthorized = currentQuotaSource === 'authorized';
-        const title = isAuthorized
-            ? (i18n['quotaSource.authorizedInfoTitle'] || 'Authorized Monitoring')
-            : (i18n['quotaSource.localInfoTitle'] || 'Local Monitoring');
-        const text = title;
-        quotaSourceInfo.classList.remove('hidden');
-        quotaSourceInfo.classList.toggle('authorized', isAuthorized);
-        quotaSourceInfo.classList.toggle('local', !isAuthorized);
-        quotaSourceInfo.innerHTML = `
-            <div class="quota-source-info-content">
-                <div class="quota-source-info-text">${text}</div>
-            </div>
-        `;
     }
 
     function renderLoadingCard(source) {
@@ -2904,6 +2900,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         });
 
+        vscode.postMessage({ command: 'tabChanged', tab: tabId });
         if (tabId === 'history') {
             activateHistoryTab();
         }

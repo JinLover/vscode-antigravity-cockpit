@@ -799,6 +799,11 @@ body {
     gap: 10px;
 }
 
+/* Force two columns in list/table view to reduce row height */
+.account-table .quota-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .action-buttons {
     display: flex;
     gap: 6px;

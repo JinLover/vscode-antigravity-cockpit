@@ -120,7 +120,12 @@
             });
             container.querySelector('.quota-account-overview-btn')?.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.vscode.postMessage({ command: 'executeCommand', commandId: 'agCockpit.openAccountsOverview' });
+                const tabBtn = document.querySelector('.tab-btn[data-tab="accounts"]');
+                if (tabBtn) {
+                     tabBtn.click();
+                } else {
+                     this.vscode.postMessage({ command: 'executeCommand', commandId: 'agCockpit.openAccountsOverview' });
+                }
             });
 
             // Authorize

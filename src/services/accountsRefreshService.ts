@@ -36,15 +36,16 @@ export class AccountsRefreshService {
     private refreshTimer?: ReturnType<typeof setInterval>;
     private lastManualRefresh = 0;
     private static readonly MANUAL_REFRESH_COOLDOWN_MS = 10000;
+    private static readonly STARTUP_WS_WAIT_MS = 5000;
     private isRefreshingQuotas = false;
     private refreshInFlight: Promise<void> | null = null;
+    private startupRefreshPromise: Promise<void> | null = null;
 
     private readonly onDidUpdateEmitter = new vscode.EventEmitter<void>();
     readonly onDidUpdate = this.onDidUpdateEmitter.event;
 
     constructor(private readonly reactor: ReactorCore) {
         this.startAutoRefresh();
-        void this.refresh();
     }
 
     dispose(): void {
@@ -101,6 +102,40 @@ export class AccountsRefreshService {
         this.lastManualRefresh = now;
         await this.refresh();
         return true;
+    }
+
+    async refreshOnStartup(waitMs: number = AccountsRefreshService.STARTUP_WS_WAIT_MS): Promise<void> {
+        if (this.startupRefreshPromise) {
+            return this.startupRefreshPromise;
+        }
+
+        this.startupRefreshPromise = (async () => {
+            if (!cockpitToolsWs.isConnected) {
+                await new Promise<void>((resolve) => {
+                    let settled = false;
+                    const finish = () => {
+                        if (settled) {
+                            return;
+                        }
+                        settled = true;
+                        cockpitToolsWs.removeListener('connected', onConnected);
+                        clearTimeout(timeoutId);
+                        resolve();
+                    };
+                    const onConnected = () => {
+                        finish();
+                    };
+                    const timeoutId = setTimeout(finish, waitMs);
+                    cockpitToolsWs.on('connected', onConnected);
+                    if (cockpitToolsWs.isConnected) {
+                        finish();
+                    }
+                });
+            }
+            await this.refresh({ reason: 'startup' });
+        })();
+
+        return this.startupRefreshPromise;
     }
 
     async refresh(options?: { forceSync?: boolean; skipSync?: boolean; reason?: string }): Promise<void> {

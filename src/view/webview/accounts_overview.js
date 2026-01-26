@@ -23,8 +23,14 @@
     let sortGroups = [];
     let currentConfig = {};
     let isInitialLoading = true;
-    let refreshAllPending = false;
     let actionMessageTimer = null;
+    let renderToken = 0;
+    let lastRenderOrder = [];
+    let lastRenderViewMode = viewMode;
+    let refreshCooldownTimer = null;
+    const REFRESH_COOLDOWN_SECONDS = 10;
+    let refreshAllLabel = '';
+    const RENDER_BATCH_SIZE = 1;
 
     const elements = {
         backBtn: document.getElementById('ao-back-btn'),
@@ -228,6 +234,34 @@
     function hideActionMessage() {
         if (!elements.actionMessage) return;
         elements.actionMessage.classList.add('hidden');
+    }
+
+    function startRefreshCooldown(seconds) {
+        if (!elements.refreshAllBtn) return;
+        elements.refreshAllBtn.classList.add('loading');
+        elements.refreshAllBtn.disabled = true;
+        elements.refreshAllBtn.setAttribute('aria-disabled', 'true');
+
+        let remaining = seconds;
+        elements.refreshAllBtn.textContent = `${remaining}s`;
+
+        if (refreshCooldownTimer) {
+            clearInterval(refreshCooldownTimer);
+        }
+
+        refreshCooldownTimer = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                clearInterval(refreshCooldownTimer);
+                refreshCooldownTimer = null;
+                elements.refreshAllBtn.classList.remove('loading');
+                elements.refreshAllBtn.disabled = false;
+                elements.refreshAllBtn.removeAttribute('aria-disabled');
+                elements.refreshAllBtn.textContent = refreshAllLabel || getString('refreshAll', 'Refresh');
+            } else {
+                elements.refreshAllBtn.textContent = `${remaining}s`;
+            }
+        }, 1000);
     }
 
     // =====================================================================
@@ -447,7 +481,43 @@
         `;
     }
 
+    function escapeCss(value) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(value);
+        }
+        return value.replace(/["\\]/g, '\\$&');
+    }
+
+    function getRenderOrder(items) {
+        return items.map(item => item.email);
+    }
+
+    function isSameRenderOrder(nextOrder) {
+        if (nextOrder.length !== lastRenderOrder.length) {
+            return false;
+        }
+        for (let i = 0; i < nextOrder.length; i += 1) {
+            if (nextOrder[i] !== lastRenderOrder[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function patchRender(container, items, renderer) {
+        for (const account of items) {
+            const selector = `[data-email="${escapeCss(account.email)}"]`;
+            const existing = container.querySelector(selector);
+            if (!existing) {
+                return false;
+            }
+            existing.outerHTML = renderer(account);
+        }
+        return true;
+    }
+
     function render() {
+        renderToken += 1;
         updateSortOptions();
         updateFilterOptions();
 
@@ -480,8 +550,6 @@
         elements.loading.classList.add('hidden');
         elements.emptyState.classList.add('hidden');
         elements.emptyMatch.classList.add('hidden');
-        elements.accountsGrid.classList.add('hidden');
-        elements.accountsTable.classList.add('hidden');
 
         if (accounts.length === 0) {
             elements.emptyState.classList.remove('hidden');
@@ -493,45 +561,85 @@
             return;
         }
 
+        const nextRenderOrder = getRenderOrder(filteredAccounts);
+        const canPatch = viewMode === lastRenderViewMode && isSameRenderOrder(nextRenderOrder);
+
+        const finalizeRender = () => {
+            const filteredEmails = filteredAccounts.map(acc => acc.email);
+            const allSelected = filteredEmails.length > 0 && filteredEmails.every(email => selected.has(email));
+            if (elements.selectAll) {
+                elements.selectAll.checked = allSelected;
+            }
+
+            if (elements.deleteSelectedBtn) {
+                if (selected.size > 0) {
+                    elements.deleteSelectedBtn.classList.remove('hidden');
+                    elements.deleteSelectedBtn.title = `${getString('delete', 'Delete')} (${selected.size})`;
+                    elements.deleteSelectedBtn.setAttribute('aria-label', `${getString('delete', 'Delete')} (${selected.size})`);
+                } else {
+                    elements.deleteSelectedBtn.classList.add('hidden');
+                }
+            }
+
+            if (elements.exportBtn) {
+                const title = selected.size > 0
+                    ? `${getString('export', 'Export')} (${selected.size})`
+                    : getString('export', 'Export');
+                elements.exportBtn.title = title;
+                elements.exportBtn.setAttribute('aria-label', title);
+            }
+        };
+
+        if (canPatch) {
+            const target = viewMode === 'list' ? elements.accountsTbody : elements.accountsGrid;
+            if (patchRender(target, filteredAccounts, viewMode === 'list' ? renderAccountRow : renderAccountCard)) {
+                finalizeRender();
+                return;
+            }
+        }
+
+        elements.accountsGrid.classList.add('hidden');
+        elements.accountsTable.classList.add('hidden');
+
+        const renderIncrementally = (container, items, renderer) => {
+            const token = renderToken;
+            let index = 0;
+            container.innerHTML = '';
+
+            const step = () => {
+                if (token !== renderToken) return;
+                let html = '';
+                let count = 0;
+                while (index < items.length && count < RENDER_BATCH_SIZE) {
+                    html += renderer(items[index]);
+                    index += 1;
+                    count += 1;
+                }
+                if (html) {
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+                if (index < items.length) {
+                    requestAnimationFrame(step);
+                } else {
+                    finalizeRender();
+                }
+            };
+
+            requestAnimationFrame(step);
+        };
+
         if (viewMode === 'list') {
             elements.accountsTable.classList.remove('hidden');
-            elements.accountsTbody.innerHTML = filteredAccounts.map(acc => renderAccountRow(acc)).join('');
+            renderIncrementally(elements.accountsTbody, filteredAccounts, renderAccountRow);
         } else {
             elements.accountsGrid.classList.remove('hidden');
-            elements.accountsGrid.innerHTML = filteredAccounts.map(acc => renderAccountCard(acc)).join('');
+            renderIncrementally(elements.accountsGrid, filteredAccounts, renderAccountCard);
         }
 
-        const filteredEmails = filteredAccounts.map(acc => acc.email);
-        const allSelected = filteredEmails.length > 0 && filteredEmails.every(email => selected.has(email));
-        if (elements.selectAll) {
-            elements.selectAll.checked = allSelected;
-        }
+        lastRenderOrder = nextRenderOrder;
+        lastRenderViewMode = viewMode;
 
-        if (elements.deleteSelectedBtn) {
-            if (selected.size > 0) {
-                elements.deleteSelectedBtn.classList.remove('hidden');
-                elements.deleteSelectedBtn.title = `${getString('delete', 'Delete')} (${selected.size})`;
-                elements.deleteSelectedBtn.setAttribute('aria-label', `${getString('delete', 'Delete')} (${selected.size})`);
-            } else {
-                elements.deleteSelectedBtn.classList.add('hidden');
-            }
-        }
-
-        if (elements.exportBtn) {
-            const title = selected.size > 0
-                ? `${getString('export', 'Export')} (${selected.size})`
-                : getString('export', 'Export');
-            elements.exportBtn.title = title;
-            elements.exportBtn.setAttribute('aria-label', title);
-        }
-
-        if (refreshAllPending) {
-            const stillLoading = accounts.some(acc => acc.loading);
-            if (!stillLoading) {
-                refreshAllPending = false;
-                elements.refreshAllBtn.classList.remove('loading');
-            }
-        }
+        return;
     }
 
     // =====================================================================
@@ -732,9 +840,9 @@
         elements.viewGridBtn?.addEventListener('click', () => setViewMode('grid'));
 
         elements.refreshAllBtn?.addEventListener('click', () => {
-            refreshAllPending = true;
-            elements.refreshAllBtn.classList.add('loading');
-            vscode.postMessage({ command: 'refreshAll' });
+            if (elements.refreshAllBtn.disabled) return;
+            startRefreshCooldown(REFRESH_COOLDOWN_SECONDS);
+            vscode.postMessage({ command: 'executeCommand', commandId: 'agCockpit.accountTree.refresh' });
         });
 
         elements.addBtn?.addEventListener('click', () => openAddModal('oauth'));
@@ -1355,6 +1463,10 @@
             if (message.data.config) {
                 currentConfig = message.data.config;
             }
+            refreshAllLabel = getString('refreshAll', 'Refresh');
+            if (elements.refreshAllBtn && !elements.refreshAllBtn.disabled) {
+                elements.refreshAllBtn.textContent = refreshAllLabel;
+            }
             if (isInitialLoading) {
                 isInitialLoading = false;
             }
@@ -1413,6 +1525,7 @@
         if (state?.viewMode) {
             viewMode = state.viewMode;
         }
+        refreshAllLabel = getString('refreshAll', 'Refresh');
         setViewMode(viewMode);
         setOauthUrl(oauthUrl);
         bindEvents();

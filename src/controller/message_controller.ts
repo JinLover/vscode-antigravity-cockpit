@@ -14,6 +14,8 @@ import { announcementService } from '../announcement';
 import { antigravityToolsSyncService } from '../antigravityTools_sync';
 import { cockpitToolsWs, AccountInfo } from '../services/cockpitToolsWs';
 import { getQuotaHistory, clearHistory, clearAllHistory } from '../services/quota_history';
+import { oauthService } from '../auto_trigger';
+import { AccountsRefreshService } from '../services/accountsRefreshService';
 
 export class MessageController {
     // 跟踪已通知的模型以避免重复弹窗 (虽然主要逻辑在 TelemetryController，但 CheckAndNotify 可能被消息触发吗? 不, 主要是 handleMessage)
@@ -28,6 +30,7 @@ export class MessageController {
         private hud: CockpitHUD,
         private reactor: ReactorCore,
         private onRetry: () => Promise<void>,
+        private refreshService?: AccountsRefreshService,
     ) {
         this.context = context;
         this.setupMessageHandling();
@@ -88,7 +91,8 @@ export class MessageController {
             }
         });
 
-        this.hud.onSignal(async (message: WebviewMessage) => {
+        this.hud.onSignal(async (msg: WebviewMessage) => {
+            const message = msg as any;
             switch (message.command) {
                 case 'togglePin':
                     logger.info(`Received togglePin signal: ${JSON.stringify(message)}`);
@@ -147,6 +151,9 @@ export class MessageController {
                     // 尝试确保 WebSocket 连接（如果断开则触发重连）
                     cockpitToolsWs.ensureConnected();
                     this.reactor.syncTelemetry();
+                    if (this.refreshService) {
+                        this.refreshService.refresh();
+                    }
                     {
                         const state = await autoTriggerController.getState();
                         this.hud.sendMessage({
@@ -163,6 +170,9 @@ export class MessageController {
                     } else {
                         logger.info('Dashboard initialized (no cache, performing full sync)');
                         this.reactor.syncTelemetry();
+                    }
+                    if (this.refreshService) {
+                        // 启动时刷新由扩展入口统一调度，避免早于 WS 连接
                     }
                     // 发送公告状态
                     {
@@ -542,6 +552,13 @@ export class MessageController {
 
                 // ============ Auto Trigger ============
                 case 'tabChanged':
+                    if (message.tab === 'accounts') {
+                        await configService.setStateValue('lastActiveView', 'accountsOverview');
+                        this.hud.syncAccountsToWebview();
+                    } else {
+                        await configService.setStateValue('lastActiveView', 'dashboard');
+                    }
+
                     // Tab 切换时，如果切到自动触发 Tab，发送状态更新
                     if (message.tab === 'auto-trigger') {
                         logger.debug('Switched to Auto Trigger tab');
@@ -845,6 +862,244 @@ export class MessageController {
                     break;
 
                 case 'autoTrigger.reauthorizeAccount':
+                    // Re-authorize logic... (keep existing if any code follows, but here it was just the case label)
+                    // ... existing logic ...
+                    break; 
+
+                // ============ Accounts Overview Handlers ============
+
+                case 'refreshAll':
+                    if (this.refreshService) {
+                        cockpitToolsWs.ensureConnected();
+                        const refreshed = await this.refreshService.manualRefresh();
+                        if (!refreshed) {
+                            this.hud.syncAccountsToWebview();
+                        }
+                        // refreshService updates notify HUD via subscription in hud.ts
+                    }
+                    break;
+
+                case 'refreshAccount':
+                    if (typeof message.email === 'string' && this.refreshService) {
+                        await this.refreshService.loadAccountQuota(message.email);
+                    }
+                    break;
+                
+                case 'switchAccount': // Alias for switching client account
+                    if (typeof message.email === 'string') {
+                        // Reusing autoTrigger.switchLoginAccount logic basically
+                        const email = message.email;
+                        logger.info(`[MsgCtrl] Switching account to: ${email}`);
+                         if (!cockpitToolsWs.isConnected) {
+                            vscode.window.showWarningMessage(t('accountTree.cockpitToolsNotRunning'));
+                            return;
+                        }
+                        try {
+                            const resp = await cockpitToolsWs.getAccounts();
+                            const account = resp.accounts.find((a: AccountInfo) => a.email.toLowerCase() === email.toLowerCase());
+                            if (account && account.id) {
+                                const result = await cockpitToolsWs.switchAccount(account.id);
+                                if (result.success) {
+                                     // active account updated via WS event
+                                    this.hud.sendMessage({
+                                        type: 'actionResult',
+                                        data: { status: 'success', message: t('accountsOverview.switchSuccess', { email }) }
+                                    });
+                                } else {
+                                    this.hud.sendMessage({
+                                        type: 'actionResult',
+                                        data: { status: 'error', message: result.message }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                             const err = e instanceof Error ? e : new Error(String(e));
+                             this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status: 'error', message: err.message }
+                            });
+                        }
+                    }
+                    break;
+
+                case 'deleteAccount':
+                     if (typeof message.email === 'string') {
+                        try {
+                            await autoTriggerController.removeAccount(message.email);
+                            if (this.refreshService) await this.refreshService.refresh();
+                            this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status: 'success', message: t('accountsOverview.deleteSuccess', { email: message.email }) }
+                            });
+                        } catch (e) {
+                            const err = e instanceof Error ? e : new Error(String(e));
+                            this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status: 'error', message: err.message }
+                            });
+                        }
+                     }
+                    break;
+
+                case 'deleteAccounts':
+                    if (Array.isArray(message.emails)) {
+                        let successCount = 0;
+                        for (const email of message.emails) {
+                             try {
+                                await autoTriggerController.removeAccount(email);
+                                successCount++;
+                            } catch (error) {
+                                logger.warn(`Failed to delete ${email}: ${error}`);
+                            }
+                        }
+                        if (this.refreshService) await this.refreshService.refresh();
+                         this.hud.sendMessage({
+                            type: 'actionResult',
+                            data: { status: 'success', message: t('accountsOverview.deleteBatchSuccess', { count: successCount }) }
+                        });
+                    }
+                    break;
+
+                case 'addAccount':
+                    // Complex add account flow with modes
+                    {
+                        const mode = typeof message.mode === 'string' ? message.mode : undefined;
+                        try {
+                            if (mode === 'prepare' || mode === 'start') {
+                                const url = await oauthService.prepareAuthorizationSession();
+                                this.hud.sendMessage({ type: 'oauthUrl', data: { url } });
+                                if (mode === 'start' && url) {
+                                    vscode.env.openExternal(vscode.Uri.parse(url));
+                                }
+                            } else if (mode === 'cancel') {
+                                oauthService.cancelAuthorizationSession();
+                            } else if (mode === 'continue' || !mode) {
+                                // Default flow
+                                const success = await oauthService.startAuthorization();
+                                if (success) {
+                                    if (this.refreshService) await this.refreshService.refresh();
+                                    this.hud.sendMessage({
+                                        type: 'actionResult',
+                                        data: { status: 'success', message: t('accountsOverview.addSuccess'), closeModal: true }
+                                    });
+                                } else {
+                                    this.hud.sendMessage({
+                                        type: 'actionResult',
+                                        data: { status: 'error', message: t('accountsOverview.addFailed', { error: 'Unknown' }) }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            const err = e instanceof Error ? e : new Error(String(e));
+                            this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status: 'error', message: err.message }
+                            });
+                        }
+                    }
+                    break;
+
+                case 'importTokens':
+                     if (typeof message.content === 'string') {
+                         // Note: Logic needs to be implemented or imported. 
+                         // For now, let's defer or implement basic parsing if possible.
+                         // But imported refresh tokens need to be saved to DB.
+                         // autoTriggerController doesn't expose raw import? 
+                         // Actually `credentialStorage` has `saveCredential`.
+                         // Let's implement basic JSON parsing here.
+                         try {
+                             let tokens: any[] = [];
+                             try {
+                                 const parsed = JSON.parse(message.content);
+                                 tokens = Array.isArray(parsed) ? parsed : [parsed];
+                             } catch {
+                                 tokens = message.content.split('\n').filter(line => line.trim()).map(line => ({ refresh_token: line.trim() }));
+                             }
+                             
+                             let count = 0;
+                             let errors = 0;
+                             for (const item of tokens) {
+                                 const anyItem = item as any;
+                                 if (anyItem.refresh_token) {
+                                     try {
+                                         // 显式断言 email 为 string | undefined，虽然 buildCredentialFromRefreshToken 接受 optional
+                                         const emailArg = typeof anyItem.email === 'string' ? anyItem.email : undefined;
+                                         const credential = await oauthService.buildCredentialFromRefreshToken(anyItem.refresh_token, emailArg);
+                                         await credentialStorage.saveCredentialForAccount(credential.email, credential);
+                                         count++;
+                                     } catch (error) {
+                                         const err = error instanceof Error ? error : new Error(String(error));
+                                         errors++;
+                                         logger.warn(`Failed to import token: ${err.message}`);
+                                     }
+                                 }
+                             }
+                             
+                             if (count > 0 && this.refreshService) {
+                                 await this.refreshService.refresh();
+                             }
+
+                             let messageText = '';
+                             let status: 'success' | 'error' = 'success';
+                             if (count > 0) {
+                                 messageText = t('accountsOverview.tokenImportSuccess') || `Successfully imported ${count} accounts.`;
+                                 if (errors > 0) {
+                                    messageText += ` (${errors} failed)`;
+                                    status = 'warning' as any;
+                                 }
+                             } else {
+                                 messageText = t('accountsOverview.tokenImportFailed') || 'Import failed.';
+                                 status = 'error';
+                             }
+
+                             this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status, message: messageText, closeModal: count > 0 }
+                            });
+                         } catch (e) {
+                             this.hud.sendMessage({
+                                type: 'actionResult',
+                                data: { status: 'error', message: 'Invalid JSON format' }
+                            });
+                         }
+                     }
+                    break;
+
+                case 'importFromExtension':
+                    // Reuse antigravityToolsSync logic
+                    await this.handleAntigravityToolsImport(false); // force=false? Actually importFromExtension usually means sync.
+                    break;
+
+                case 'importFromLocal':
+                    await this.handleLocalAuthImport();
+                    break;
+                
+                case 'importFromTools':
+                     // Same as antigravityToolsSync.import
+                     await this.handleAntigravityToolsImport(false);
+                    break;
+
+                case 'exportAccounts':
+                     // Generate JSON of accounts and copy to clipboard
+                     if (Array.isArray(message.emails)) {
+                         const creds = await credentialStorage.getAllCredentials();
+                         const exportData = message.emails
+                            .filter((e: string) => creds[e])
+                            .map((e: string) => ({ email: e, refresh_token: creds[e].refreshToken }));
+                         
+                         const jsonStr = JSON.stringify(exportData, null, 2);
+                         await vscode.env.clipboard.writeText(jsonStr);
+                         
+                         this.hud.sendMessage({
+                            type: 'actionResult',
+                            data: { 
+                                status: 'success', 
+                                message: t('accountsOverview.exportSuccess', { count: exportData.length }) || `Successfully exported ${exportData.length} accounts to clipboard.` 
+                            }
+                        });
+                     }
+                    break;
+
                     // 重新授权指定账号（先删除再重新授权）
                     if (message.email) {
                         logger.info(`User reauthorizing account: ${message.email}`);
@@ -904,6 +1159,15 @@ export class MessageController {
                             type: 'announcementState',
                             data: state,
                         });
+                    }
+                    break;
+
+                case 'openDashboard':
+                    await configService.setStateValue('lastActiveView', 'dashboard');
+                    if (typeof message.tab === 'string') {
+                        await vscode.commands.executeCommand('agCockpit.open', { tab: message.tab, forceView: 'dashboard' });
+                    } else {
+                        await vscode.commands.executeCommand('agCockpit.open', { forceView: 'dashboard' });
                     }
                     break;
 

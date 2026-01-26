@@ -2,7 +2,6 @@
 import * as vscode from 'vscode';
 import { CockpitHUD } from '../view/hud';
 import { QuickPickView } from '../view/quickpick_view';
-import { AccountsOverviewWebview } from '../view/accountsOverviewWebview';
 import { ReactorCore } from '../engine/reactor';
 import { triggerService } from '../auto_trigger/trigger_service';
 import { configService } from '../shared/config_service';
@@ -16,7 +15,6 @@ export class CommandController {
         private context: vscode.ExtensionContext,
         private hud: CockpitHUD,
         private quickPickView: QuickPickView,
-        private accountsOverview: AccountsOverviewWebview,
         private reactor: ReactorCore,
         private onRetry: () => Promise<void>,
     ) {
@@ -33,19 +31,33 @@ export class CommandController {
                 const lastActiveView = configService.getStateValue<string>('lastActiveView', 'dashboard');
                 const targetView = options?.forceView || lastActiveView;
                 
-                // 如果用户上次选择的是账号总览，则打开账号总览
+                const targetTab = options?.tab ?? (targetView === 'accountsOverview' ? 'accounts' : 'quota');
+
+                // 账号总览统一切到 HUD 的 Accounts Tab（不再打开独立 Webview）
                 if (targetView === 'accountsOverview') {
-                    logger.info('[CommandController] Opening AccountsOverview (last active view)');
-                    this.hud.dispose();
-                    await this.accountsOverview.show();
+                    logger.info('[CommandController] Opening Accounts tab (last active view)');
+                    const success = await this.hud.revealHud(targetTab);
+                    if (!success) {
+                        const selection = await vscode.window.showWarningMessage(
+                            t('webview.failedPrompt'),
+                            t('webview.switchToQuickPick'),
+                            t('webview.cancel'),
+                        );
+                        if (selection === t('webview.switchToQuickPick')) {
+                            await configService.updateConfig('displayMode', DISPLAY_MODE.QUICKPICK);
+                            vscode.window.showInformationMessage(t('webview.switchedToQuickPick'));
+                            this.reactor.reprocess();
+                            this.quickPickView.show();
+                        }
+                    }
                     return;
                 }
-                
-                // 否则打开 Dashboard
+
+                // 打开 Dashboard
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
                     this.quickPickView.show();
                 } else {
-                    const success = await this.hud.revealHud(options?.tab ?? 'quota');
+                    const success = await this.hud.revealHud(targetTab);
                     if (!success) {
                         // Webview 创建失败，引导用户切换到 QuickPick 模式
                         const selection = await vscode.window.showWarningMessage(

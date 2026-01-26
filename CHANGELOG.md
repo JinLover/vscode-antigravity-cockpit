@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1.2] - 2026-01-26
+
+### Added
+- **Accounts Overview Integration**: Migrated the standalone Accounts Overview webview into the main Cockpit HUD for a more seamless experience and improved performance.
+- **Internationalization**: Added comprehensive translation support for the new Accounts Overview interface across all 18+ supported languages.
+
+### Changed
+- **UX**: The history tab now automatically selects and highlights the currently active account with a checkmark (✅).
+- **Architecture**: Refactored `AccountsRefreshService` for more robust account state tracking and reliable periodic refreshes.
+- **Performance**: Consolidated webview scripts and assets, reducing the memory footprint and improving response times.
+
+### Fixed
+- **Quota History**: Fixed an issue where the 'RESET' tag was not displayed when quota recovered to 100% without a significant timestamp jump.
+
 ## [2.1.1] - 2026-01-26
 
 ### Added

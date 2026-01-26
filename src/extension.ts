@@ -11,7 +11,6 @@ import { configService, CockpitConfig } from './shared/config_service';
 import { t, i18n, normalizeLocaleInput } from './shared/i18n';
 import { CockpitHUD } from './view/hud';
 import { QuickPickView } from './view/quickpick_view';
-import { AccountsOverviewWebview } from './view/accountsOverviewWebview';
 import { initErrorReporter, captureError, flushEvents } from './shared/error_reporter';
 import { AccountsRefreshService } from './services/accountsRefreshService';
 
@@ -35,7 +34,6 @@ import { cockpitToolsSyncEvents } from './services/cockpitToolsSync';
 let hunter: ProcessHunter;
 let reactor: ReactorCore;
 let hud: CockpitHUD;
-let accountsOverview: AccountsOverviewWebview;
 let quickPickView: QuickPickView;
 let accountsRefreshService: AccountsRefreshService;
 
@@ -93,28 +91,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     hunter = new ProcessHunter();
     reactor = new ReactorCore();
     accountsRefreshService = new AccountsRefreshService(reactor);
-    hud = new CockpitHUD(context.extensionUri, context);
-    accountsOverview = new AccountsOverviewWebview(context.extensionUri, context, reactor, accountsRefreshService);
+    hud = new CockpitHUD(context.extensionUri, context, accountsRefreshService);
     quickPickView = new QuickPickView();
     lastQuotaSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
-
-    // 设置账号总览关闭回调
-    // 注意：不再自动重新打开 Dashboard，而是保持用户最后的视图状态
-    accountsOverview.onClose(() => {
-        // 用户手动关闭面板时，不再自动打开 Dashboard
-        // 这样用户下次点击状态栏时会根据保存的状态决定打开哪个视图
-        logger.info('[AccountsOverview] Panel closed');
-    });
 
     // 注册账号总览命令
     context.subscriptions.push(
         vscode.commands.registerCommand('agCockpit.openAccountsOverview', async () => {
             // 保存视图状态：用户选择了账号总览
             await configService.setStateValue('lastActiveView', 'accountsOverview');
-            // 先关闭 Dashboard
-            hud.dispose();
-            // 打开账号总览
-            await accountsOverview.show();
+            // 切换到 HUD 的账号总览 Tab
+            vscode.commands.executeCommand('agCockpit.open', { tab: 'accounts' });
         }),
     );
 
@@ -123,10 +110,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand('agCockpit.backToDashboard', async () => {
             // 保存视图状态：用户选择了返回 Dashboard
             await configService.setStateValue('lastActiveView', 'dashboard');
-            accountsOverview.dispose();
             // 打开 Dashboard（使用 forceView 确保打开 Dashboard 而不是根据状态判断）
             setTimeout(() => {
-                vscode.commands.executeCommand('agCockpit.open', { forceView: 'dashboard' });
+                vscode.commands.executeCommand('agCockpit.open', { tab: 'quota', forceView: 'dashboard' });
             }, 100);
         }),
     );
@@ -151,7 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // 初始化其他控制器
     _telemetryController = new TelemetryController(reactor, statusBar, hud, quickPickView, onRetry);
     _messageController = new MessageController(context, hud, reactor, onRetry);
-    _commandController = new CommandController(context, hud, quickPickView, accountsOverview, reactor, onRetry);
+    _commandController = new CommandController(context, hud, quickPickView, reactor, onRetry);
 
     // 初始化自动触发控制器
     autoTriggerController.initialize(context);
@@ -182,6 +168,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // 连接 Cockpit Tools WebSocket
     cockpitToolsWs.connect();
+    void accountsRefreshService.refreshOnStartup();
 
     cockpitToolsSyncEvents.on('localChanged', () => {
         logger.info('[Sync] Webview refreshAccounts');

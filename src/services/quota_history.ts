@@ -210,7 +210,7 @@ function resolvePointAction(
     if (next.remainingPercentage === 100) {
         if (last.remainingPercentage !== 100) {
             record.hasCountdownDropAt100 = false;
-            return { action: 'add' };
+            return { action: 'add', isReset: true };
         }
         const lastDisplay = getCountdownDisplayMinutes(last.countdownSeconds);
         const nextDisplay = getCountdownDisplayMinutes(next.countdownSeconds);
