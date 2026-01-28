@@ -247,7 +247,7 @@ Thanks to all the above project authors for their open-source contributions! If 
 
 If you find this extension helpful, consider buying me a coffee! Your support keeps me motivated to continue improving ❤️
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-orange?style=for-the-badge&logo=buy-me-a-coffee)](docs/DONATE.md)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-orange?style=for-the-badge&logo=buy-me-a-coffee)](docs/DONATE.en.md)
 
 ---
 
