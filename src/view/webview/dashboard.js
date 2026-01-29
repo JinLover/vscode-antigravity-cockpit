@@ -1,6 +1,6 @@
 /**
- * Antigravity Cockpit - Dashboard 脚本
- * 处理 Webview 交互逻辑
+ * Antigravity Cockpit - Dashboard script
+ * Handles Webview UI interactions.
  */
 
 import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../shared/recommended_models';
@@ -8,10 +8,10 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 (function () {
     'use strict';
 
-    // 获取 VS Code API（保存到全局供其他模块复用）
+    // VS Code API (stored globally for reuse)
     const vscode = window.__vscodeApi || (window.__vscodeApi = acquireVsCodeApi());
 
-    // DOM 元素
+    // DOM elements
     const dashboard = document.getElementById('dashboard');
     const statusDiv = document.getElementById('status');
     const refreshBtn = document.getElementById('refresh-btn');
@@ -22,7 +22,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     const modelManagerModal = document.getElementById('model-manager-modal');
     const modelManagerList = document.getElementById('model-manager-list');
     const modelManagerCount = document.getElementById('model-manager-count');
-    const quotaSourceInfo = document.getElementById('quota-source-info');
     const historyAccountSelect = document.getElementById('history-account-select');
     const historyModelSelect = document.getElementById('history-model-select');
     const historyRangeButtons = document.querySelectorAll('.history-range-btn');
@@ -36,32 +35,22 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     const historyNextBtn = document.getElementById('history-next');
     const historyPageInfo = document.getElementById('history-page-info');
 
-    // 国际化文本
+    // i18n strings
     const i18n = window.__i18n || {};
-    const authUi = window.AntigravityAuthUI
-        ? (window.__authUi || (window.__authUi = new window.AntigravityAuthUI(vscode)))
-        : null;
 
-    // 状态
+    // State
     let isRefreshing = false;
     let dragSrcEl = null;
     let currentConfig = {};
     let lastSnapshot = null; // Store last snapshot for re-renders
-    let renameGroupId = null; // 当前正在重命名的分组 ID
-    let renameModelIds = [];  // 当前分组包含的模型 ID
-    let renameModelId = null; // 当前正在重命名的模型 ID（非分组模式）
-    let isRenamingModel = false; // 标记是否正在重命名模型（而非分组）
-    let currentQuotaSource = 'local';
-    let isQuotaSourceSwitching = false;
-    let pendingQuotaSource = null;
-    let authorizedAvailable = false;
-    let authorizationStatus = null;
-    let antigravityToolsSyncEnabled = false;
-    let antigravityToolsAutoSwitchEnabled = true;
+    let renameGroupId = null; // Group currently being renamed
+    let renameModelIds = [];  // Model IDs in the group being renamed
+    let renameModelId = null; // Model being renamed (non-group mode)
+    let isRenamingModel = false; // Renaming a single model (not a group)
     let visibleModelIds = [];
-    let renameOriginalName = ''; // 原始名称（用于重置）
-    let isProfileHidden = false;  // 控制整个计划详情卡片的显示/隐藏
-    let isDataMasked = false;     // 控制数据是否显示为 ***
+    let renameOriginalName = ''; // Original name for reset
+    let isProfileHidden = false; // Toggle plan details panel
+    let isDataMasked = false;    // Mask sensitive data
     let modelManagerSelection = new Set();
     let modelManagerModels = [];
     const historyState = {
@@ -76,7 +65,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         needsRender: false,
     };
 
-    // 刷新冷却时间（秒）
+    // Refresh cooldown (seconds)
     let refreshCooldown = 10;
 
     const normalizeRecommendedKey = value => (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -93,20 +82,20 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         AUTH_RECOMMENDED_MODEL_IDS.map((id, index) => [normalizeRecommendedKey(id), index])
     );
 
-    // 自定义分组弹框状态
+    // Custom grouping modal state
     const customGroupingModal = document.getElementById('custom-grouping-modal');
     let customGroupingState = {
         groups: [],       // { id: string, name: string, modelIds: string[] }
-        allModels: [],    // 所有模型数据（从 snapshot 获取）
-        groupMappings: {} // 原始分组映射（用于保存）
+        allModels: [],    // All models from the snapshot
+        groupMappings: {} // Original group mappings (for save)
     };
 
 
 
-    // ============ 初始化 ============
+    // ============ Init ============
 
     function init() {
-        // 恢复状态
+        // Restore UI state
         const state = vscode.getState() || {};
         if (state.lastRefresh && state.refreshCooldown) {
             const now = Date.now();
@@ -115,14 +104,10 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 startCooldown(state.refreshCooldown - diff);
             }
         }
-        currentQuotaSource = 'local';
+        // isProfileHidden and isDataMasked are loaded from config in handleMessage
 
-        // isProfileHidden and isDataMasked are now loaded from config in handleMessage
-
-        // 绑定事件
         refreshBtn.addEventListener('click', handleRefresh);
 
-        // 初始化富文本 Tooltip
         initRichTooltip();
         if (resetOrderBtn) {
             resetOrderBtn.addEventListener('click', handleResetOrder);
@@ -133,43 +118,36 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             manageModelsBtn.addEventListener('click', openModelManagerModal);
         }
 
-        // 计划详情开关按钮
         const toggleProfileBtn = document.getElementById('toggle-profile-btn');
         if (toggleProfileBtn) {
             toggleProfileBtn.addEventListener('click', handleToggleProfile);
         }
 
-        // 分组开关按钮
         const toggleGroupingBtn = document.getElementById('toggle-grouping-btn');
         if (toggleGroupingBtn) {
             toggleGroupingBtn.addEventListener('click', handleToggleGrouping);
         }
 
-        // 设置按钮
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', openSettingsModal);
         }
 
-        // 关闭设置模态框
         const closeSettingsBtn = document.getElementById('close-settings-btn');
         if (closeSettingsBtn) {
             closeSettingsBtn.addEventListener('click', closeSettingsModal);
         }
 
-        // 重命名模态框 - 关闭按钮
         const closeRenameBtn = document.getElementById('close-rename-btn');
         if (closeRenameBtn) {
             closeRenameBtn.addEventListener('click', closeRenameModal);
         }
 
-        // 重命名模态框 - 确定按钮
         const saveRenameBtn = document.getElementById('save-rename-btn');
         if (saveRenameBtn) {
             saveRenameBtn.addEventListener('click', saveRename);
         }
 
-        // 重命名输入框 - 回车键确认
         const renameInput = document.getElementById('rename-input');
         if (renameInput) {
             renameInput.addEventListener('keydown', (e) => {
@@ -189,13 +167,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             updateModelManagerSelection('none');
         });
 
-        // 重置名称按钮
         const resetNameBtn = document.getElementById('reset-name-btn');
         if (resetNameBtn) {
             resetNameBtn.addEventListener('click', resetName);
         }
 
-        // 自定义分组弹框事件绑定
         const closeCustomGroupingBtn = document.getElementById('close-custom-grouping-btn');
         if (closeCustomGroupingBtn) {
             closeCustomGroupingBtn.addEventListener('click', closeCustomGroupingModal);
@@ -219,7 +195,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
 
 
-        // 事件委托：处理置顶开关
+        // Event delegation: pin toggles
         dashboard.addEventListener('change', (e) => {
             if (e.target.classList.contains('pin-toggle')) {
                 const modelId = e.target.getAttribute('data-model-id');
@@ -229,21 +205,21 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         });
 
-        // 监听消息
+        // Listen for extension messages
         window.addEventListener('message', handleMessage);
 
-        // Tab 导航切换
+        // Tab navigation
         initTabNavigation();
         initHistoryTab();
         window.addEventListener('resize', handleHistoryResize);
 
-        renderLoadingCard(currentQuotaSource);
+        renderLoadingCard();
 
-        // 通知扩展已准备就绪
+        // Notify extension that UI is ready
         vscode.postMessage({ command: 'init' });
     }
 
-    // ============ Tab 导航 ============
+    // ============ Tab navigation ============
 
     function initTabNavigation() {
         const tabButtons = document.querySelectorAll('.tab-btn');
@@ -253,11 +229,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             btn.addEventListener('click', () => {
                 const targetTab = btn.getAttribute('data-tab');
 
-                // 更新按钮状态
                 tabButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
-                // 更新内容显示
                 tabContents.forEach(content => {
                     if (content.id === `tab-${targetTab}`) {
                         content.classList.add('active');
@@ -266,7 +240,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                     }
                 });
 
-                // 通知扩展 Tab 切换（可用于状态同步）
                 if (targetTab === 'history') {
                     activateHistoryTab();
                 }
@@ -274,7 +247,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         });
     }
 
-    // ============ 历史记录 Tab ============
 
     function initHistoryTab() {
         if (historyAccountSelect) {
@@ -405,12 +377,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function activateHistoryTab() {
-        // Auto-switch to active account when entering tab
-        const activeEmail = authorizationStatus?.activeAccount;
-        if (activeEmail) {
-            historyState.selectedEmail = activeEmail;
-        }
-
         updateHistoryRangeButtons();
         updateHistoryAccountSelect();
         updateHistoryModelSelect();
@@ -487,21 +453,16 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             return;
         }
 
-        const activeEmail = authorizationStatus?.activeAccount;
         historyAccountSelect.disabled = false;
         accounts.forEach(email => {
             const option = document.createElement('option');
             option.value = email;
-            const isCurrent = activeEmail && email === activeEmail;
-            option.textContent = isCurrent ? `✅ ${email}` : email;
+            option.textContent = email;
             historyAccountSelect.appendChild(option);
         });
 
         if (historyState.selectedEmail && accounts.includes(historyState.selectedEmail)) {
             historyAccountSelect.value = historyState.selectedEmail;
-        } else if (activeEmail && accounts.includes(activeEmail)) {
-            historyAccountSelect.value = activeEmail;
-            historyState.selectedEmail = activeEmail;
         } else {
             historyState.selectedEmail = accounts[0];
             historyAccountSelect.value = accounts[0];
@@ -942,11 +903,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         return trimmed || fallback;
     }
 
-    // ============ 设置模态框 ============
 
     function openSettingsModal() {
         if (settingsModal) {
-            // 从当前配置填充值
             const notificationCheckbox = document.getElementById('notification-enabled');
             const warningInput = document.getElementById('warning-threshold');
             const criticalInput = document.getElementById('critical-threshold');
@@ -969,13 +928,10 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 };
             }
 
-            // 初始化语言选择器
             initLanguageSelector();
 
-            // 初始化状态栏格式选择器
             initStatusBarFormatSelector();
 
-            // 初始化即时保存事件
             initSettingsAutoSave();
 
             settingsModal.classList.remove('hidden');
@@ -983,7 +939,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 初始化状态栏格式选择器（下拉框）
      */
     function initStatusBarFormatSelector() {
         const formatSelect = document.getElementById('statusbar-format');
@@ -992,12 +947,10 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         const currentFormat = currentConfig.statusBarFormat || 'standard';
         formatSelect.value = currentFormat;
 
-        // 绑定 change 事件
         formatSelect.onchange = null;
         formatSelect.addEventListener('change', () => {
             const format = formatSelect.value;
 
-            // 发送消息到扩展，立即更新状态栏
             vscode.postMessage({
                 command: 'updateStatusBarFormat',
                 statusBarFormat: format
@@ -1006,41 +959,34 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 初始化语言选择器
      */
     function initLanguageSelector() {
         const languageSelect = document.getElementById('language-select');
         if (!languageSelect) return;
 
-        // 设置当前语言
         const currentLanguage = currentConfig.language || 'auto';
         languageSelect.value = currentLanguage;
 
-        // 绑定 change 事件
         languageSelect.onchange = null;
         languageSelect.addEventListener('change', () => {
             const newLanguage = languageSelect.value;
 
-            // 发送消息到扩展
             vscode.postMessage({
                 command: 'updateLanguage',
                 language: newLanguage
             });
 
-            // 显示提示需要重新打开面板
             showToast(i18n['language.changed'] || 'Language changed. Reopen panel to apply.', 'info');
         });
     }
 
     /**
-     * 初始化设置自动保存（即时生效）
      */
     function initSettingsAutoSave() {
         const notificationCheckbox = document.getElementById('notification-enabled');
         const warningInput = document.getElementById('warning-threshold');
         const criticalInput = document.getElementById('critical-threshold');
 
-        // 通知开关即时保存
         if (notificationCheckbox) {
             notificationCheckbox.onchange = null;
             notificationCheckbox.addEventListener('change', () => {
@@ -1051,7 +997,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 阈值输入框失焦时自动钳位并保存
         if (warningInput) {
             warningInput.onblur = null;
             warningInput.addEventListener('blur', () => {
@@ -1068,7 +1013,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 钳位阈值并保存
      */
     function clampAndSaveThresholds() {
         const warningInput = document.getElementById('warning-threshold');
@@ -1077,19 +1021,16 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         let warningValue = parseInt(warningInput?.value, 10) || 30;
         let criticalValue = parseInt(criticalInput?.value, 10) || 10;
 
-        // 自动钳制到有效范围
         if (warningValue < 5) warningValue = 5;
         if (warningValue > 80) warningValue = 80;
         if (criticalValue < 1) criticalValue = 1;
         if (criticalValue > 50) criticalValue = 50;
 
-        // 确保 critical < warning
         if (criticalValue >= warningValue) {
             criticalValue = warningValue - 1;
             if (criticalValue < 1) criticalValue = 1;
         }
 
-        // 更新输入框显示钳制后的值
         if (warningInput) warningInput.value = warningValue;
         if (criticalInput) criticalInput.value = criticalValue;
 
@@ -1097,7 +1038,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 保存阈值设置
      */
     function saveThresholds() {
         const notificationCheckbox = document.getElementById('notification-enabled');
@@ -1108,7 +1048,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         const warningValue = parseInt(warningInput?.value, 10) || 30;
         const criticalValue = parseInt(criticalInput?.value, 10) || 10;
 
-        // 发送到扩展保存
         vscode.postMessage({
             command: 'updateThresholds',
             notificationEnabled: notificationEnabled,
@@ -1123,13 +1062,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }
     }
 
-    // ============ 重命名模态框 ============
 
     function openRenameModal(groupId, currentName, modelIds) {
         if (renameModal) {
             renameGroupId = groupId;
             renameModelIds = modelIds || [];
-            isRenamingModel = false; // 分组重命名模式
+            isRenamingModel = false;
             renameModelId = null;
 
             const renameInput = document.getElementById('rename-input');
@@ -1144,17 +1082,14 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 打开模型重命名模态框（非分组模式）
-     * @param {string} modelId 模型 ID
-     * @param {string} currentName 当前名称
      */
     function openModelRenameModal(modelId, currentName, originalName) {
         if (renameModal) {
-            isRenamingModel = true; // 模型重命名模式
+            isRenamingModel = true;
             renameModelId = modelId;
             renameGroupId = null;
             renameModelIds = [];
-            renameOriginalName = originalName || currentName || ''; // 保存原始名称
+            renameOriginalName = originalName || currentName || '';
 
             const renameInput = document.getElementById('rename-input');
             if (renameInput) {
@@ -1188,17 +1123,14 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }
 
         if (isRenamingModel && renameModelId) {
-            // 模型重命名模式
             vscode.postMessage({
                 command: 'renameModel',
                 modelId: renameModelId,
-                groupName: newName  // 复用 groupName 字段
+                groupName: newName
             });
 
             showToast((i18n['model.renamed'] || 'Model renamed to {name}').replace('{name}', newName), 'success');
         } else if (renameGroupId && renameModelIds.length > 0) {
-            // 分组重命名模式
-            // 乐观更新：立即在前端更新 UI
             updateGroupNameOptimistically(renameGroupId, newName);
 
             vscode.postMessage({
@@ -1215,12 +1147,8 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 乐观更新分组名称（直接更新 DOM 和缓存）
-     * @param {string} groupId 分组 ID
-     * @param {string} newName 新名称
      */
     function updateGroupNameOptimistically(groupId, newName) {
-        // 1. 更新 DOM
         const card = document.querySelector(`.group-card[data-group-id="${groupId}"]`);
         if (card) {
             const nameSpan = card.querySelector('.group-name');
@@ -1229,7 +1157,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         }
         
-        // 2. 更新缓存 (lastSnapshot)
         if (lastSnapshot && lastSnapshot.groups) {
             const group = lastSnapshot.groups.find(g => g.groupId === groupId);
             if (group) {
@@ -1238,18 +1165,15 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }
     }
     /**
-     * 重置名称为默认值（填入输入框，不直接提交）
      */
     function resetName() {
         const renameInput = document.getElementById('rename-input');
         if (!renameInput) return;
 
         if (isRenamingModel && renameModelId && renameOriginalName) {
-            // 模型重置模式：将原始名称填入输入框
             renameInput.value = renameOriginalName;
             renameInput.focus();
         }
-        // 分组重置暂不支持
     }
 
     function handleToggleProfile() {
@@ -1271,7 +1195,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function handleToggleGrouping() {
-        // 发送切换分组的消息给扩展
         vscode.postMessage({ command: 'toggleGrouping' });
     }
 
@@ -1288,7 +1211,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }
     }
 
-    // ============ 事件处理 ============
 
     function handleRefresh() {
         if (refreshBtn.disabled) return;
@@ -1311,14 +1233,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         showToast(i18n['dashboard.resetOrder'] || 'Reset Order', 'success');
     }
 
-    // handleAutoGroup 已移除，功能已整合到其他模块
 
 
 
     function handleMessage(event) {
         const message = event.data;
 
-        // 处理标签页切换消息
         if (message.type === 'switchTab' && message.tab) {
             switchToTab(message.tab);
             return;
@@ -1328,58 +1248,29 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             isRefreshing = false;
             updateRefreshButton();
 
-            // 保存配置
+            // Save config
             if (message.config) {
                 currentConfig = message.config;
 
-                // 从配置读取 profileHidden（持久化存储）
+                // Persisted UI flags
                 if (message.config.profileHidden !== undefined) {
                     isProfileHidden = message.config.profileHidden;
                     updateToggleProfileButton();
                 }
-                if (message.config.quotaSource) {
-                    if (!isQuotaSourceSwitching || message.config.quotaSource === pendingQuotaSource) {
-                        currentQuotaSource = message.config.quotaSource;
-                        vscode.setState({ ...vscode.getState(), quotaSource: currentQuotaSource });
-                    }
-                }
-                if (message.config.authorizedAvailable !== undefined) {
-                    authorizedAvailable = message.config.authorizedAvailable;
-                }
-                if (message.config.authorizationStatus !== undefined) {
-                    authorizationStatus = message.config.authorizationStatus;
-                }
                 if (Array.isArray(message.config.visibleModels)) {
                     visibleModelIds = message.config.visibleModels;
                 }
-                // 从配置读取 dataMasked 状态（持久化存储）
                 if (message.config.dataMasked !== undefined) {
                     isDataMasked = message.config.dataMasked;
                 }
-                if (message.config.antigravityToolsSyncEnabled !== undefined) {
-                    antigravityToolsSyncEnabled = message.config.antigravityToolsSyncEnabled;
-                }
-                if (message.config.antigravityToolsAutoSwitchEnabled !== undefined) {
-                    antigravityToolsAutoSwitchEnabled = message.config.antigravityToolsAutoSwitchEnabled;
-                }
-
-
-            }
-            if (isQuotaSourceSwitching) {
-                if (message.config?.quotaSource !== pendingQuotaSource) {
-                    updateQuotaSourceUI(message.data?.isConnected);
-                    return;
-                }
-                setQuotaSourceSwitching(false);
             }
             render(message.data, message.config);
             lastSnapshot = message.data; // Update global snapshot
-            updateQuotaSourceUI(message.data?.isConnected);
             if (isHistoryTabActive()) {
                 requestQuotaHistory();
             }
 
-            // 自动同步已移至后端 TelemetryController 处理，前端不再主动触发
+            // Auto sync is handled on the extension side.
         }
 
         if (message.type === 'quotaHistoryData') {
@@ -1397,1266 +1288,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 requestQuotaHistory();
             }
         }
-
-        if (message.type === 'autoTriggerState') {
-            if (message.data?.authorization !== undefined) {
-                authorizationStatus = message.data.authorization;
-                authorizedAvailable = Boolean(message.data.authorization?.isAuthorized);
-                updateQuotaAuthUI();
-                const modal = document.getElementById('account-manage-modal');
-                if (modal && !modal.classList.contains('hidden')) {
-                    const accounts = authorizationStatus?.accounts || [];
-                    if (accounts.length === 0) {
-                        if (authUi) {
-                            modal.classList.add('hidden');
-                        } else {
-                            closeAccountManageModal();
-                        }
-                    } else {
-                        if (authUi) {
-                            authUi.renderAccountManageList();
-                        } else {
-                            renderAccountManageList();
-                        }
-                    }
-                }
-            }
-        }
-
-        // 处理公告状态更新
-        if (message.type === 'announcementState') {
-            handleAnnouncementState(message.data);
-        }
-
-        if (message.type === 'quotaSourceError') {
-            if (isQuotaSourceSwitching) {
-                setQuotaSourceSwitching(false);
-                updateQuotaSourceUI(lastSnapshot?.isConnected);
-            }
-            showToast(message.message || (i18n['quotaSource.authorizedMissing'] || 'Authorize auto wake-up first'), 'warning');
-        }
-
-        if (message.type === 'antigravityToolsSyncStatus') {
-            if (message.data?.enabled !== undefined) {
-                antigravityToolsSyncEnabled = message.data.enabled;
-            }
-            if (message.data?.autoSyncEnabled !== undefined) {
-                antigravityToolsSyncEnabled = message.data.autoSyncEnabled;
-            }
-            if (message.data?.autoSwitchEnabled !== undefined) {
-                antigravityToolsAutoSwitchEnabled = message.data.autoSwitchEnabled;
-            }
-            updateQuotaAuthUI();
-        }
-
-        if (message.type === 'antigravityToolsSyncPrompt') {
-            const data = message.data || {};
-            showAntigravityToolsSyncPrompt(data);
-        }
-
-        if (message.type === 'localAuthImportPrompt') {
-            const data = message.data || {};
-            showLocalAuthImportPrompt(data);
-        }
-        if (message.type === 'localAuthImportError') {
-            closeLocalAuthImportPrompt();
-        }
-
-        // 处理导入进度消息
-        if (message.type === 'antigravityToolsSyncProgress') {
-            const { current, total, email } = message.data || {};
-            updateAntigravityToolsSyncProgress(current, total, email);
-        }
-
-        // 处理导入完成消息
-        if (message.type === 'antigravityToolsSyncComplete') {
-            handleAntigravityToolsSyncComplete(message.data?.success, message.data?.error);
-        }
-        
-        // 处理 Cockpit Tools 数据同步消息
-        if (message.type === 'refreshAccounts') {
-            // Cockpit Tools 数据变更，刷新授权状态和账号列表
-            showToast(i18n['cockpitTools.dataChanged'] || '账号数据已更新', 'info');
-        }
-        
-        if (message.type === 'accountSwitched') {
-            // 账号切换完成
-            showToast((i18n['cockpitTools.accountSwitched'] || '已切换至 {email}').replace('{email}', message.email || ''), 'success');
-        }
     }
 
-    function setQuotaSourceSwitching(isSwitching, source) {
-        isQuotaSourceSwitching = isSwitching;
-        if (isSwitching) {
-            pendingQuotaSource = source || pendingQuotaSource;
-            renderLoadingCard(pendingQuotaSource);
-        } else {
-            pendingQuotaSource = null;
-            statusDiv.style.display = 'none';
-        }
-
-        const buttons = document.querySelectorAll('.quota-source-btn');
-        buttons.forEach(btn => {
-            const sourceKey = btn.dataset.source;
-            btn.disabled = isSwitching && sourceKey === pendingQuotaSource;
-        });
-    }
-
-    function requestQuotaSourceChange(source, options = {}) {
-        if (!source) {
-            return;
-        }
-        const force = options.force === true;
-        if (!force) {
-            if (!isQuotaSourceSwitching && source === currentQuotaSource) {
-                return;
-            }
-            if (isQuotaSourceSwitching && source === pendingQuotaSource) {
-                return;
-            }
-        }
-        const command = options.command || 'updateQuotaSource';
-        setQuotaSourceSwitching(true, source);
-        currentQuotaSource = source;
-        updateQuotaSourceUI(lastSnapshot?.isConnected);
-        vscode.postMessage({ command, quotaSource: source });
-    }
-
-    // attachAntigravityToolsSyncActions 保留但需要在某处调用
-    // 当前由 authUi 模块处理，此函数作为兼容备用
-    function _attachAntigravityToolsSyncActions() {
-        const checkbox = document.getElementById('antigravityTools-sync-checkbox');
-        const importBtn = document.getElementById('antigravityTools-import-btn');
-
-        checkbox?.addEventListener('change', (e) => {
-            const enabled = e.target.checked;
-            antigravityToolsSyncEnabled = enabled;
-            vscode.postMessage({ command: 'antigravityToolsSync.toggle', enabled });
-        });
-
-        importBtn?.addEventListener('click', () => {
-            vscode.postMessage({ command: 'antigravityToolsSync.import' });
-        });
-    }
-
-    // ============ 账号同步配置弹框 ============
-
-    function openATSyncConfigModal() {
-        let modal = document.getElementById('at-sync-config-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'at-sync-config-modal';
-            modal.className = 'modal hidden';
-            modal.innerHTML = `
-                <div class="modal-content at-sync-config-content">
-                    <div class="modal-header">
-                        <h3>⚙ ${i18n['atSyncConfig.title'] || '账号同步配置'}</h3>
-                        <button class="close-btn" id="close-at-sync-config-modal">×</button>
-                    </div>
-                    <div class="modal-body at-sync-config-body">
-                        <!-- 数据访问说明 -->
-                        <div class="at-sync-section at-sync-info-section">
-                            <details class="at-sync-details at-sync-info-details">
-                                <summary class="at-sync-details-summary">
-                                    <div class="at-sync-section-title-row">
-                                        <div class="at-sync-section-title">ℹ️ ${i18n['atSyncConfig.featureTitle'] || '功能说明'}</div>
-                                        <span class="at-sync-details-link">
-                                            ${i18n['atSyncConfig.dataAccessDetails'] || '展开详情说明'}
-                                        </span>
-                                    </div>
-                                    <div class="at-sync-description at-sync-info-summary">
-                                        ${i18n['atSyncConfig.featureSummary'] || '查看数据访问与同步/导入规则。'}
-                                    </div>
-                                </summary>
-                                <div class="at-sync-details-body">
-                                    <div class="at-sync-info-block">
-                                        <div class="at-sync-info-subtitle">🛡️ ${i18n['atSyncConfig.dataAccessTitle'] || '数据访问说明'}</div>
-                                        <div class="at-sync-description">
-                                            ${i18n['atSyncConfig.dataAccessDesc'] || '本功能会读取您本地 Antigravity Tools 与 Antigravity 客户端的账户信息，仅用于本插件授权/切换。'}
-                                        </div>
-                                        <div class="at-sync-path-info">
-                                            <span class="at-sync-path-label">${i18n['atSyncConfig.readPathTools'] || 'Antigravity Tools 路径'}:</span>
-                                            <code class="at-sync-path">~/.antigravity_tools/</code>
-                                        </div>
-                                        <div class="at-sync-path-info">
-                                            <span class="at-sync-path-label">${i18n['atSyncConfig.readPathLocal'] || 'Antigravity 客户端路径'}:</span>
-                                            <code class="at-sync-path">.../Antigravity/User/globalStorage/state.vscdb</code>
-                                        </div>
-                                        <div class="at-sync-data-list">
-                                            <span class="at-sync-data-label">${i18n['atSyncConfig.readData'] || '读取内容'}:</span>
-                                            <span class="at-sync-data-items">${i18n['atSyncConfig.readDataItems'] || '账户邮箱、Refresh Token（本地读取）'}</span>
-                                        </div>
-                                    </div>
-                                    <div class="at-sync-info-block">
-                                        <div class="at-sync-info-line">
-                                            <span class="at-sync-info-label">${i18n['atSyncConfig.autoSyncTitle'] || '自动同步'}：</span>
-                                            <span class="at-sync-info-text">${i18n['atSyncConfig.autoSyncDesc'] || '启用后检测到 Antigravity Tools 新账号时自动导入（是否切换由“自动切换”控制）。'}</span>
-                                        </div>
-                                        <div class="at-sync-info-line">
-                                            <span class="at-sync-info-label">${i18n['atSyncConfig.manualImportTitle'] || '手动导入'}：</span>
-                                            <span class="at-sync-info-text">${i18n['atSyncConfig.manualImportDesc'] || '分别导入本地账户或 Antigravity Tools 账户，仅执行一次。'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </details>
-                        </div>
-                        
-                        <!-- 自动同步 / 自动切换 -->
-                        <div class="at-sync-section">
-                            <div class="at-sync-toggle-grid">
-                                <div class="at-sync-toggle-card">
-                                    <label class="at-sync-toggle-label">
-                                        <input type="checkbox" id="at-sync-modal-checkbox" ${antigravityToolsSyncEnabled ? 'checked' : ''}>
-                                        <span>${i18n['atSyncConfig.enableAutoSync'] || '自动同步Antigravity Tools账户'}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 手动导入 -->
-                        <div class="at-sync-section">
-                            <div class="at-sync-section-title">📥 ${i18n['atSyncConfig.manualImportTitle'] || '手动导入'}</div>
-                            <div class="at-sync-import-actions">
-                                <button id="at-sync-modal-import-local-btn" class="at-btn at-btn-primary at-sync-import-btn">
-                                    ${i18n['atSyncConfig.importLocal'] || '导入本地账户'}
-                                </button>
-                                <button id="at-sync-modal-import-tools-btn" class="at-btn at-btn-primary at-sync-import-btn">
-                                    ${i18n['atSyncConfig.importTools'] || '导入 Antigravity Tools 账户'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            // 绑定关闭按钮
-            document.getElementById('close-at-sync-config-modal')?.addEventListener('click', closeATSyncConfigModal);
-            
-            // 点击背景关闭
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeATSyncConfigModal();
-            });
-        }
-
-        // 更新 checkbox 状态
-        const syncCheckbox = modal.querySelector('#at-sync-modal-checkbox');
-        if (syncCheckbox) {
-            syncCheckbox.checked = antigravityToolsSyncEnabled;
-        }
-
-
-        modal.querySelectorAll('.at-sync-details').forEach((detail) => {
-            detail.removeAttribute('open');
-        });
-
-        // 绑定事件（每次打开都重新绑定以确保状态正确）
-        const newCheckbox = modal.querySelector('#at-sync-modal-checkbox');
-        const importLocalBtn = modal.querySelector('#at-sync-modal-import-local-btn');
-        const importToolsBtn = modal.querySelector('#at-sync-modal-import-tools-btn');
-
-        // 移除旧的事件监听器
-        const newCheckboxClone = newCheckbox.cloneNode(true);
-        newCheckbox.parentNode.replaceChild(newCheckboxClone, newCheckbox);
-        const importLocalBtnClone = importLocalBtn.cloneNode(true);
-        importLocalBtn.parentNode.replaceChild(importLocalBtnClone, importLocalBtn);
-        const importToolsBtnClone = importToolsBtn.cloneNode(true);
-        importToolsBtn.parentNode.replaceChild(importToolsBtnClone, importToolsBtn);
-
-        // 绑定新的事件监听器
-        modal.querySelector('#at-sync-modal-checkbox')?.addEventListener('change', (e) => {
-            const enabled = e.target.checked;
-            antigravityToolsSyncEnabled = enabled;
-            vscode.postMessage({ command: 'antigravityToolsSync.toggle', enabled });
-        });
-
-        modal.querySelector('#at-sync-modal-import-local-btn')?.addEventListener('click', () => {
-            showLocalAuthImportLoading();
-            vscode.postMessage({ command: 'autoTrigger.importLocal' });
-            closeATSyncConfigModal();
-        });
-        modal.querySelector('#at-sync-modal-import-tools-btn')?.addEventListener('click', () => {
-            vscode.postMessage({ command: 'antigravityToolsSync.import' });
-            closeATSyncConfigModal();
-        });
-
-        modal.classList.remove('hidden');
-    }
-
-    function closeATSyncConfigModal() {
-        const modal = document.getElementById('at-sync-config-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    }
-
-    function formatMaskedEmail(email) {
-        if (!email || typeof email !== 'string') {
-            return '';
-        }
-        return email;
-    }
-
-    function ensureLocalAuthImportModal() {
-        let modal = document.getElementById('local-auth-import-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'local-auth-import-modal';
-            modal.className = 'modal hidden';
-            document.body.appendChild(modal);
-        }
-        return modal;
-    }
-
-    function bindLocalAuthImportModalClose(modal) {
-        modal.onclick = (e) => {
-            if (e.target === modal) closeLocalAuthImportPrompt();
-        };
-        modal.querySelector('#close-local-import-modal')?.addEventListener('click', closeLocalAuthImportPrompt);
-    }
-
-    function showLocalAuthImportLoading() {
-        const modal = ensureLocalAuthImportModal();
-        modal.innerHTML = `
-            <div class="modal-content local-import-content">
-                <div class="modal-header">
-                    <h3>${i18n['localImportPrompt.loadingTitle'] || '正在检测本地授权'}</h3>
-                    <button class="close-btn" id="close-local-import-modal">×</button>
-                </div>
-                <div class="modal-body local-import-body">
-                    <div class="local-import-panel">
-                        <div class="local-import-desc">${i18n['localImportPrompt.loadingDesc'] || '正在读取本地已授权账号信息，请稍候…'}</div>
-                        <div class="local-import-loading">
-                            <span class="local-import-spinner"></span>
-                            <span>${i18n['localImportPrompt.loadingHint'] || '正在检测本地授权账号'}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        bindLocalAuthImportModalClose(modal);
-        modal.classList.remove('hidden');
-    }
-
-    function showLocalAuthImportPrompt(data) {
-        const email = typeof data.email === 'string' ? data.email : '';
-        const exists = data.exists === true;
-        const displayEmail = formatMaskedEmail(email);
-        const modal = ensureLocalAuthImportModal();
-
-        modal.innerHTML = `
-            <div class="modal-content local-import-content">
-                <div class="modal-header">
-                    <h3>${i18n['localImportPrompt.title'] || '确认同步本地授权'}</h3>
-                    <button class="close-btn" id="close-local-import-modal">×</button>
-                </div>
-                <div class="modal-body local-import-body">
-                    <div class="local-import-panel">
-                        <div class="local-import-desc">${i18n['localImportPrompt.desc'] || '已检测到本地已授权账号，是否同步到插件中？'}</div>
-                        <div class="local-import-summary">
-                            <div class="local-import-label">${i18n['localImportPrompt.foundLabel'] || '检测到账号'}</div>
-                            <div class="local-import-email" id="local-import-email"></div>
-                            <span class="local-import-tag" id="local-import-tag">${i18n['localImportPrompt.existsTag'] || '已存在'}</span>
-                        </div>
-                        <div class="local-import-note" id="local-import-note"></div>
-                    </div>
-                    <div class="local-import-actions">
-                        <button id="local-import-cancel-btn" class="at-btn at-btn-outline">${i18n['localImportPrompt.cancel'] || '取消'}</button>
-                        <button id="local-import-confirm-btn" class="at-btn at-btn-primary"></button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        bindLocalAuthImportModalClose(modal);
-
-        const emailEl = modal.querySelector('#local-import-email');
-        const tagEl = modal.querySelector('#local-import-tag');
-        const noteEl = modal.querySelector('#local-import-note');
-        const confirmBtn = modal.querySelector('#local-import-confirm-btn');
-        const cancelBtn = modal.querySelector('#local-import-cancel-btn');
-
-        if (emailEl) {
-            emailEl.textContent = displayEmail || i18n['localImportPrompt.unknownEmail'] || '未知账号';
-        }
-        if (tagEl) {
-            tagEl.style.display = exists ? 'inline-flex' : 'none';
-        }
-        if (noteEl) {
-            noteEl.textContent = exists
-                ? (i18n['localImportPrompt.existsDesc'] || '该账号已存在，继续将覆盖本地保存的授权信息。')
-                : (i18n['localImportPrompt.newDesc'] || '将导入并切换为该账号。');
-        }
-
-        const confirmLabel = exists
-            ? (i18n['localImportPrompt.overwrite'] || '覆盖并同步')
-            : (i18n['localImportPrompt.confirm'] || '确认同步');
-        if (confirmBtn) {
-            confirmBtn.textContent = confirmLabel;
-        }
-
-        if (confirmBtn && confirmBtn.parentNode && cancelBtn && cancelBtn.parentNode) {
-            const confirmBtnClone = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(confirmBtnClone, confirmBtn);
-            const cancelBtnClone = cancelBtn.cloneNode(true);
-            cancelBtn.parentNode.replaceChild(cancelBtnClone, cancelBtn);
-
-            modal.querySelector('#local-import-confirm-btn')?.addEventListener('click', () => {
-                vscode.postMessage({ command: 'autoTrigger.importLocalConfirm', overwrite: exists });
-                closeLocalAuthImportPrompt();
-            });
-            modal.querySelector('#local-import-cancel-btn')?.addEventListener('click', () => {
-                closeLocalAuthImportPrompt();
-            });
-        }
-
-        modal.classList.remove('hidden');
-    }
-
-    function closeLocalAuthImportPrompt() {
-        const modal = document.getElementById('local-auth-import-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    }
-
-    /**
-     * 显示 AntigravityTools Sync 弹框
-     * @param {Object} data - 弹框数据
-     * @param {string} data.promptType - 弹框类型: 'new_accounts' | 'switch_only' | 'not_found'
-     * @param {string[]} data.newEmails - 新账户列表（new_accounts 场景）
-     * @param {string} data.currentEmail - AntigravityTools 当前账户
-     * @param {string} data.localEmail - 本地当前账户（switch_only 场景）
-     * @param {boolean} data.autoConfirm - 是否自动确认（自动同步模式）
-     */
-    function showAntigravityToolsSyncPrompt(data) {
-        const promptType = data.promptType || 'new_accounts';
-        const newEmails = data.newEmails || [];
-        const currentEmail = data.currentEmail || '';
-        const localEmail = data.localEmail || '';
-        const autoConfirm = data.autoConfirm === true;
-        const autoConfirmImportOnly = data.autoConfirmImportOnly === true;
-
-        let modal = document.getElementById('antigravityTools-sync-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'antigravityTools-sync-modal';
-            modal.className = 'modal hidden';
-            document.body.appendChild(modal);
-        }
-
-        // 根据场景渲染不同内容
-        if (promptType === 'not_found') {
-            // 场景：未检测到 AntigravityTools 账户
-            modal.innerHTML = `
-                <div class="modal-content antigravityTools-sync-content">
-                    <div class="modal-header antigravityTools-sync-header">
-                        <div class="antigravityTools-sync-title">
-                            <h3>${i18n['antigravityToolsSync.notFoundTitle']}</h3>
-                        </div>
-                        <button class="close-btn" id="antigravityTools-sync-close">×</button>
-                    </div>
-                    <div class="modal-body antigravityTools-sync-body">
-                        <div class="antigravityTools-sync-section">
-                            <p class="antigravityTools-sync-notice">${i18n['antigravityToolsSync.notFoundDesc']}</p>
-                        </div>
-                    </div>
-                    <div class="modal-footer antigravityTools-sync-footer">
-                        <button id="antigravityTools-sync-manual-import" class="at-btn at-btn-primary">
-                            ${i18n['antigravityToolsSync.manualImportBtn'] || '手动导入 JSON'}
-                        </button>
-                        <button id="antigravityTools-sync-ok" class="at-btn at-btn-secondary">${i18n['common.gotIt']}</button>
-                    </div>
-                </div>
-            `;
-            modal.classList.remove('hidden');
-            
-            modal.querySelector('#antigravityTools-sync-close')?.addEventListener('click', () => {
-                modal.classList.add('hidden');
-            });
-            modal.querySelector('#antigravityTools-sync-ok')?.addEventListener('click', () => {
-                modal.classList.add('hidden');
-            });
-            modal.querySelector('#antigravityTools-sync-manual-import')?.addEventListener('click', () => {
-                modal.classList.add('hidden');
-                showAntigravityToolsJsonImportModal();
-            });
-            return;
-        }
-
-        if (promptType === 'switch_only') {
-            // 场景：账户不一致，询问是否切换
-            modal.innerHTML = `
-                <div class="modal-content antigravityTools-sync-content">
-                    <div class="modal-header antigravityTools-sync-header">
-                        <div class="antigravityTools-sync-title">
-                            <h3>${i18n['antigravityToolsSync.switchTitle']}</h3>
-                        </div>
-                        <button class="close-btn" id="antigravityTools-sync-close">×</button>
-                    </div>
-                    <div class="modal-body antigravityTools-sync-body">
-                        <div class="antigravityTools-sync-section">
-                            <div class="antigravityTools-sync-label">${i18n['antigravityToolsSync.localAccount']}</div>
-                             <div class="antigravityTools-sync-current">${localEmail || i18n['common.none']}</div>
-                        </div>
-                        <div class="antigravityTools-sync-section">
-                            <div class="antigravityTools-sync-label">${i18n['autoTrigger.antigravityToolsSyncTarget']}</div>
-                            <div class="antigravityTools-sync-current antigravityTools-sync-highlight">${currentEmail}</div>
-                        </div>
-                    </div>
-                    <div class="modal-footer antigravityTools-sync-footer">
-                        <button id="antigravityTools-sync-cancel" class="at-btn at-btn-secondary">${i18n['common.cancel']}</button>
-                        <button id="antigravityTools-sync-switch" class="at-btn at-btn-primary">${i18n['antigravityToolsSync.switchBtn']}</button>
-                    </div>
-                </div>
-            `;
-            modal.classList.remove('hidden');
-
-            let autoSwitchTimer = null;
-
-            const closeBtn = modal.querySelector('#antigravityTools-sync-close');
-            const cancelBtn = modal.querySelector('#antigravityTools-sync-cancel');
-            const switchBtn = modal.querySelector('#antigravityTools-sync-switch');
-
-            function clearAutoTimer() {
-                if (autoSwitchTimer) {
-                    clearTimeout(autoSwitchTimer);
-                    autoSwitchTimer = null;
-                }
-            }
-
-            function doSwitch() {
-                clearAutoTimer();
-                switchBtn.disabled = true;
-                cancelBtn.disabled = true;
-                closeBtn.disabled = true;
-                switchBtn.textContent = i18n['autoTrigger.switching'];
-                // switchOnly: true 告诉后端这是纯切换场景，无需导入
-                vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: false, switchOnly: true, targetEmail: currentEmail });
-            }
-
-            closeBtn?.addEventListener('click', () => {
-                clearAutoTimer();
-                modal.classList.add('hidden');
-            });
-            cancelBtn?.addEventListener('click', () => {
-                clearAutoTimer();
-                modal.classList.add('hidden');
-            });
-            switchBtn?.addEventListener('click', doSwitch);
-
-            // 自动确认模式：延迟一小段时间后自动执行切换
-            if (autoConfirm) {
-                autoSwitchTimer = setTimeout(() => doSwitch(), 300);
-            }
-            return;
-        }
-
-        // 场景：有新账户（默认，原有逻辑）
-        modal.innerHTML = `
-            <div class="modal-content antigravityTools-sync-content">
-                <div class="modal-header antigravityTools-sync-header">
-                    <div class="antigravityTools-sync-title">
-                        <h3>${i18n['autoTrigger.antigravityToolsSyncTitle']}</h3>
-                        <span class="antigravityTools-sync-count" id="antigravityTools-sync-count">+${newEmails.length}</span>
-                    </div>
-                    <button class="close-btn" id="antigravityTools-sync-close">×</button>
-                </div>
-                <div class="modal-body antigravityTools-sync-body">
-                    <div class="antigravityTools-sync-section">
-                        <div class="antigravityTools-sync-label">${i18n['autoTrigger.antigravityToolsSyncNew']}</div>
-                        <div class="antigravityTools-sync-chips">${newEmails.map(e => `<span class="antigravityTools-sync-chip">${e}</span>`).join('')}</div>
-                    </div>
-                    <div class="antigravityTools-sync-section">
-                        <div class="antigravityTools-sync-label">${i18n['autoTrigger.antigravityToolsSyncTarget']}</div>
-                        <div class="antigravityTools-sync-current">${currentEmail || i18n['common.unknown']}</div>
-                    </div>
-                </div>
-                <div class="modal-footer antigravityTools-sync-footer">
-                    <button id="antigravityTools-sync-cancel" class="at-btn at-btn-secondary">${i18n['common.cancel']}</button>
-                    <div class="antigravityTools-sync-action-group">
-                        <button id="antigravityTools-sync-import-only" class="at-btn at-btn-secondary">${i18n['autoTrigger.importOnly']}</button>
-                        <button id="antigravityTools-sync-import-switch" class="at-btn at-btn-primary">${i18n['autoTrigger.importAndSwitch']}</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        modal.classList.remove('hidden');
-
-        let autoConfirmTimer = null;
-
-        const closeBtn = modal.querySelector('#antigravityTools-sync-close');
-        const cancelBtn = modal.querySelector('#antigravityTools-sync-cancel');
-        const importOnlyBtn = modal.querySelector('#antigravityTools-sync-import-only');
-        const importSwitchBtn = modal.querySelector('#antigravityTools-sync-import-switch');
-
-        function clearAutoTimer() {
-            if (autoConfirmTimer) {
-                clearTimeout(autoConfirmTimer);
-                autoConfirmTimer = null;
-            }
-        }
-
-        function setLoading(clickedBtn) {
-            clearAutoTimer();
-            if (importOnlyBtn) importOnlyBtn.disabled = true;
-            if (importSwitchBtn) importSwitchBtn.disabled = true;
-            if (cancelBtn) cancelBtn.disabled = true;
-            if (closeBtn) closeBtn.disabled = true;
-            if (clickedBtn) {
-                clickedBtn.textContent = i18n['autoTrigger.importing'];
-            }
-        }
-
-        function doImportOnly() {
-            setLoading(importOnlyBtn);
-            vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: true });
-        }
-
-        function doImportAndSwitch() {
-            setLoading(importSwitchBtn);
-            vscode.postMessage({ command: 'antigravityToolsSync.importConfirm', importOnly: false });
-        }
-
-        closeBtn?.addEventListener('click', () => {
-            clearAutoTimer();
-            modal.classList.add('hidden');
-        });
-        cancelBtn?.addEventListener('click', () => {
-            clearAutoTimer();
-            modal.classList.add('hidden');
-        });
-        importOnlyBtn?.addEventListener('click', doImportOnly);
-        importSwitchBtn?.addEventListener('click', doImportAndSwitch);
-
-        // 自动确认模式：延迟一小段时间后自动执行"导入并切换"
-        if (autoConfirm) {
-            autoConfirmTimer = setTimeout(() => {
-                if (autoConfirmImportOnly) {
-                    doImportOnly();
-                } else {
-                    doImportAndSwitch();
-                }
-            }, 300);
-        }
-    }
-
-    function showAntigravityToolsJsonImportModal() {
-        let modal = document.getElementById('antigravityTools-json-import-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'antigravityTools-json-import-modal';
-            modal.className = 'modal hidden';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="modal-content antigravityTools-json-content">
-                <div class="modal-header antigravityTools-sync-header">
-                    <div class="antigravityTools-sync-title">
-                        <h3>${i18n['antigravityToolsSync.manualImportTitle'] || '手动导入 JSON'}</h3>
-                    </div>
-                    <button class="close-btn" id="antigravityTools-json-close">×</button>
-                </div>
-                <div class="modal-body antigravityTools-json-body">
-                    <div class="antigravityTools-sync-section">
-                        <p class="antigravityTools-sync-notice">
-                            ${i18n['antigravityToolsSync.manualImportDesc'] || '未检测到本地 Antigravity Tools 账户，可通过 JSON 文件或粘贴内容导入。'}
-                        </p>
-                    </div>
-                    <div class="at-json-import-panel">
-                        <div class="at-json-import-actions">
-                            <input type="file" id="antigravityTools-json-file-input" accept=".json,application/json" class="hidden">
-                            <button id="antigravityTools-json-file-btn" class="at-btn at-btn-secondary">
-                                ${i18n['antigravityToolsSync.manualImportFile'] || '选择 JSON 文件'}
-                            </button>
-                            <span class="at-json-import-file-name" id="antigravityTools-json-file-name">
-                                ${i18n['common.none'] || '未选择文件'}
-                            </span>
-                        </div>
-                        <textarea id="antigravityTools-json-textarea" class="at-json-import-textarea" spellcheck="false" placeholder='${i18n['antigravityToolsSync.manualImportPlaceholder'] || '粘贴 JSON 数组，例如: [{"email":"a@b.com","refresh_token":"..."}]'}'></textarea>
-                        <div class="at-json-import-status" id="antigravityTools-json-status"></div>
-                        <div class="antigravityTools-sync-chips at-json-import-preview" id="antigravityTools-json-preview"></div>
-                        <div class="antigravityTools-sync-note">
-                            ${i18n['antigravityToolsSync.manualImportHint'] || '内容仅在本地解析，不会上传。'}
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer antigravityTools-sync-footer">
-                    <button id="antigravityTools-json-cancel" class="at-btn at-btn-secondary">${i18n['common.cancel']}</button>
-                    <button id="antigravityTools-json-import" class="at-btn at-btn-primary" disabled>
-                        ${i18n['autoTrigger.importOnly'] || '仅导入'}
-                    </button>
-                </div>
-            </div>
-        `;
-
-        modal.classList.remove('hidden');
-
-        const fileInput = modal.querySelector('#antigravityTools-json-file-input');
-        const fileBtn = modal.querySelector('#antigravityTools-json-file-btn');
-        const fileNameEl = modal.querySelector('#antigravityTools-json-file-name');
-        const textarea = modal.querySelector('#antigravityTools-json-textarea');
-        const statusEl = modal.querySelector('#antigravityTools-json-status');
-        const previewEl = modal.querySelector('#antigravityTools-json-preview');
-        const importBtn = modal.querySelector('#antigravityTools-json-import');
-        const closeBtn = modal.querySelector('#antigravityTools-json-close');
-        const cancelBtn = modal.querySelector('#antigravityTools-json-cancel');
-
-        let currentText = '';
-
-        function parseJson(text) {
-            const trimmed = (text || '').trim();
-            if (!trimmed) {
-                return { entries: [], invalid: 0, error: '' };
-            }
-
-            let data;
-            try {
-                data = JSON.parse(trimmed);
-            } catch {
-                return { entries: [], invalid: 0, error: i18n['antigravityToolsSync.manualImportJsonError'] || 'JSON 解析失败' };
-            }
-
-            if (!Array.isArray(data)) {
-                return { entries: [], invalid: 0, error: i18n['antigravityToolsSync.manualImportJsonArray'] || 'JSON must be an array' };
-            }
-
-            const entries = [];
-            let invalid = 0;
-            const seen = new Set();
-
-            for (const item of data) {
-                if (!item || typeof item !== 'object') {
-                    invalid += 1;
-                    continue;
-                }
-
-                const email = typeof item.email === 'string' ? item.email.trim() : '';
-                const refreshToken = typeof item.refresh_token === 'string'
-                    ? item.refresh_token.trim()
-                    : (typeof item.refreshToken === 'string' ? item.refreshToken.trim() : '');
-
-                if (!email || !refreshToken) {
-                    invalid += 1;
-                    continue;
-                }
-
-                const key = email.toLowerCase();
-                if (seen.has(key)) {
-                    invalid += 1;
-                    continue;
-                }
-
-                seen.add(key);
-                entries.push({ email, refreshToken });
-            }
-
-            return { entries, invalid, error: '' };
-        }
-
-        function updatePreview(entries, invalid, error) {
-            if (statusEl) {
-                statusEl.classList.toggle('is-error', Boolean(error));
-            }
-
-            if (error) {
-                if (statusEl) statusEl.textContent = error;
-                if (previewEl) previewEl.innerHTML = '';
-                if (importBtn) importBtn.disabled = true;
-                return;
-            }
-
-            if (entries.length === 0) {
-                if (statusEl) {
-                    statusEl.textContent = i18n['antigravityToolsSync.manualImportEmpty'] || '请粘贴或选择 JSON 文件';
-                }
-                if (previewEl) previewEl.innerHTML = '';
-                if (importBtn) importBtn.disabled = true;
-                return;
-            }
-
-            const invalidSuffix = invalid > 0
-                ? ` · ${(i18n['antigravityToolsSync.manualImportInvalid'] || '无效条目')} ${invalid}`
-                : '';
-            if (statusEl) {
-                statusEl.textContent = `${i18n['antigravityToolsSync.manualImportPreview'] || '将导入'} ${entries.length} ${i18n['antigravityToolsSync.manualImportCountSuffix'] || '个账号'}${invalidSuffix}`;
-            }
-
-            if (previewEl) {
-                const maxPreview = 6;
-                const chips = entries.slice(0, maxPreview).map(item => (
-                    `<span class="antigravityTools-sync-chip">${escapeHtml(item.email)}</span>`
-                ));
-                if (entries.length > maxPreview) {
-                    chips.push(`<span class="antigravityTools-sync-chip">+${entries.length - maxPreview}</span>`);
-                }
-                previewEl.innerHTML = chips.join('');
-            }
-
-            if (importBtn) importBtn.disabled = false;
-        }
-
-        function handleTextChange(text) {
-            currentText = text;
-            const result = parseJson(text);
-            updatePreview(result.entries, result.invalid, result.error);
-        }
-
-        fileBtn?.addEventListener('click', () => {
-            fileInput?.click();
-        });
-
-        fileInput?.addEventListener('change', async () => {
-            const file = fileInput.files && fileInput.files[0];
-            if (!file) {
-                return;
-            }
-            const text = await file.text();
-            if (textarea) textarea.value = text;
-            if (fileNameEl) fileNameEl.textContent = file.name;
-            handleTextChange(text);
-        });
-
-        textarea?.addEventListener('input', (e) => {
-            if (fileNameEl) {
-                fileNameEl.textContent = i18n['antigravityToolsSync.manualImportPaste'] || '粘贴 JSON';
-            }
-            handleTextChange(e.target.value);
-        });
-
-        importBtn?.addEventListener('click', () => {
-            const result = parseJson(currentText);
-            if (result.error || result.entries.length === 0) {
-                showToast(result.error || (i18n['antigravityToolsSync.manualImportEmpty'] || '请提供有效 JSON'), 'warning');
-                return;
-            }
-            importBtn.disabled = true;
-            importBtn.textContent = i18n['autoTrigger.importing'] || 'Importing...';
-            vscode.postMessage({ command: 'antigravityToolsSync.importJson', jsonText: currentText });
-        });
-
-        closeBtn?.addEventListener('click', () => modal.classList.add('hidden'));
-        cancelBtn?.addEventListener('click', () => modal.classList.add('hidden'));
-
-        updatePreview([], 0, '');
-    }
-
-    /**
-     * 更新导入进度显示，并添加取消按钮
-     */
-    function updateAntigravityToolsSyncProgress(current, total, email) {
-        const cancelText = i18n['common.cancel'] || '取消';
-        const progressText = `${i18n['autoTrigger.importing'] || 'Importing...'} ${current}/${total}`;
-        
-        // 更新 antigravityTools-sync-modal 中的按钮
-        const syncModal = document.getElementById('antigravityTools-sync-modal');
-        if (syncModal) {
-            const importOnlyBtn = syncModal.querySelector('#antigravityTools-sync-import-only');
-            const importSwitchBtn = syncModal.querySelector('#antigravityTools-sync-import-switch');
-            const cancelBtn = syncModal.querySelector('#antigravityTools-sync-cancel');
-            
-            // 显示进度
-            if (importOnlyBtn && importOnlyBtn.disabled) {
-                importOnlyBtn.textContent = progressText;
-            }
-            if (importSwitchBtn && importSwitchBtn.disabled) {
-                importSwitchBtn.textContent = progressText;
-            }
-            
-            // 启用取消按钮
-            if (cancelBtn) {
-                cancelBtn.disabled = false;
-                cancelBtn.textContent = cancelText;
-                cancelBtn.onclick = () => {
-                    vscode.postMessage({ command: 'antigravityToolsSync.cancel' });
-                    cancelBtn.disabled = true;
-                    cancelBtn.textContent = i18n['common.cancelling'] || '取消中...';
-                };
-            }
-        }
-
-        // 更新 antigravityTools-json-import-modal 中的按钮
-        const jsonModal = document.getElementById('antigravityTools-json-import-modal');
-        if (jsonModal) {
-            const importBtn = jsonModal.querySelector('#antigravityTools-json-import');
-            const cancelBtn = jsonModal.querySelector('#antigravityTools-json-cancel');
-            
-            if (importBtn && importBtn.disabled) {
-                importBtn.textContent = progressText;
-            }
-            
-            // 启用取消按钮
-            if (cancelBtn) {
-                cancelBtn.disabled = false;
-                cancelBtn.textContent = cancelText;
-                cancelBtn.onclick = () => {
-                    vscode.postMessage({ command: 'antigravityToolsSync.cancel' });
-                    cancelBtn.disabled = true;
-                    cancelBtn.textContent = i18n['common.cancelling'] || '取消中...';
-                };
-            }
-        }
-
-        // 可选：在控制台输出进度日志
-        console.log(`[AntigravityToolsSync] Progress: ${current}/${total} - ${email}`);
-    }
-
-    /**
-     * 处理导入完成消息
-     */
-    function handleAntigravityToolsSyncComplete(_success, _error) {
-        const modal = document.getElementById('antigravityTools-sync-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-        const jsonModal = document.getElementById('antigravityTools-json-import-modal');
-        if (jsonModal) {
-            jsonModal.classList.add('hidden');
-        }
-        // Toast 提示由后端的 vscode.window.showInformationMessage 处理
-    }
-
-    function updateQuotaSourceUI(isConnected) {
-        const statusEl = document.querySelector('.quota-source-status');
-        const buttons = document.querySelectorAll('.quota-source-btn');
-
-        buttons.forEach(btn => {
-            const source = btn.dataset.source;
-            btn.classList.toggle('active', source === currentQuotaSource);
-        });
-
-        if (statusEl) {
-            const authorizedReady = currentQuotaSource !== 'authorized' || authorizedAvailable;
-            const ok = isConnected !== false && authorizedReady;
-            statusEl.dataset.state = ok ? 'ok' : 'error';
-        }
-
-        updateQuotaAuthUI();
-        updateQuotaSourceInfo();
-    }
-
-    function updateQuotaAuthUI() {
-        const card = document.getElementById('quota-auth-card');
-        const row = document.getElementById('quota-auth-row');
-        if (!card || !row) {
-            return;
-        }
-
-        // Local 模式下显示本地账户信息（只读）
-        if (currentQuotaSource !== 'authorized') {
-            const localEmail = lastSnapshot?.localAccountEmail;
-            if (localEmail) {
-                // 使用远端 API + 本地账户
-                card.classList.remove('hidden');
-                // 切换至当前登录账户按钮
-                const switchToClientBtn = `<button class="quota-account-manage-btn at-switch-to-client-btn-local" title="${i18n['autoTrigger.switchToClientAccount'] || '切换至当前登录账户'}">${i18n['autoTrigger.switchToClientAccount'] || '切换至当前登录账户'}</button>`;
-                row.innerHTML = `
-                    <div class="quota-auth-info">
-                        <span class="quota-auth-icon">👤</span>
-                        <span class="quota-auth-text">${i18n['quotaSource.localAccountLabel'] || '当前账户'}</span>
-                        <span class="quota-auth-email">${localEmail}</span>
-                        ${switchToClientBtn}
-                    </div>
-                `;
-                // 绑定切换按钮事件
-                row.querySelector('.at-switch-to-client-btn-local')?.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    vscode.postMessage({ command: 'antigravityToolsSync.switchToClient' });
-                });
-            } else {
-                // 使用本地进程 API
-                card.classList.add('hidden');
-            }
-            return;
-        }
-
-        card.classList.remove('hidden');
-        const auth = authorizationStatus;
-        const accounts = auth?.accounts || [];
-        const hasAccounts = accounts.length > 0;
-        const activeAccount = auth?.activeAccount;
-        const activeEmail = activeAccount || (accounts.length > 0 ? accounts[0].email : null);
-
-        if (authUi) {
-            authUi.updateState(auth, antigravityToolsSyncEnabled, antigravityToolsAutoSwitchEnabled);
-            authUi.renderAuthRow(row, {
-                showSyncToggleInline: false,
-            });
-            return;
-        }
-        // 账号同步配置按钮
-        const atSyncConfigBtn = `<button id="at-sync-config-btn" class="at-btn at-btn-primary" title="${i18n['atSyncConfig.title'] || '账号同步配置'}">⚙ ${i18n['atSyncConfig.btnText'] || '账号同步配置'}</button>`;
-
-        if (hasAccounts && activeEmail) {
-            // 保持原有的单行布局，增加下拉箭头用于管理多账号
-            const _hasMultipleAccounts = accounts.length > 1;
-            const extraCount = Math.max(accounts.length - 1, 0);
-            const accountCountBadge = extraCount > 0
-                ? `<span class="account-count-badge" title="${i18n['autoTrigger.manageAccounts'] || 'Manage Accounts'}">+${extraCount}</span>`
-                : '';
-            const manageBtn = `<button id="quota-account-manage-btn" class="quota-account-manage-btn" title="${i18n['autoTrigger.manageAccounts']}">${i18n['autoTrigger.manageAccounts']}</button>`;
-            
-            row.innerHTML = `
-                <div class="quota-auth-info quota-auth-info-clickable" title="${i18n['autoTrigger.manageAccounts']}">
-                    <span class="quota-auth-icon">✅</span>
-                    <span class="quota-auth-text">${i18n['autoTrigger.authorized']}</span>
-                    <span class="quota-auth-email">${activeEmail}</span>
-                    ${accountCountBadge}
-                    ${manageBtn}
-                </div>
-                <div class="quota-auth-actions">
-                    ${atSyncConfigBtn}
-                </div>
-            `;
-
-            // 点击授权信息区域打开账号管理弹框
-            row.querySelector('.quota-auth-info')?.addEventListener('click', () => {
-                openAccountManageModal();
-            });
-
-            // 管理账号按钮
-            document.getElementById('quota-account-manage-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openAccountManageModal();
-            });
-
-            // 账号同步配置按钮
-            document.getElementById('at-sync-config-btn')?.addEventListener('click', () => {
-                openATSyncConfigModal();
-            });
-        } else {
-            // No accounts - show authorize button (on the right)
-            row.innerHTML = `
-                <div class="quota-auth-info">
-                    <span class="quota-auth-icon">⚠️</span>
-                    <span class="quota-auth-text">${i18n['autoTrigger.unauthorized'] || 'Unauthorized'}</span>
-                </div>
-                <div class="quota-auth-actions">
-                    ${atSyncConfigBtn}
-                    <button id="quota-auth-btn" class="at-btn at-btn-primary">${i18n['autoTrigger.authorizeBtn'] || 'Authorize'}</button>
-                </div>
-            `;
-            document.getElementById('quota-auth-btn')?.addEventListener('click', () => {
-                openAuthChoiceModal();
-            });
-            document.getElementById('at-sync-config-btn')?.addEventListener('click', () => {
-                openATSyncConfigModal();
-            });
-        }
-    }
-
-    // ============ 账号管理弹框 ============
-
-    function openAccountManageModal() {
-        let modal = document.getElementById('account-manage-modal');
-        if (!modal) {
-            // 动态创建弹框
-            modal = document.createElement('div');
-            modal.id = 'account-manage-modal';
-            modal.className = 'modal hidden';
-            modal.innerHTML = `
-                <div class="modal-content account-manage-content">
-                    <div class="modal-header">
-                        <h3>${i18n['autoTrigger.manageAccounts'] || 'Manage Accounts'}</h3>
-                        <button class="close-btn" id="close-account-manage-modal">×</button>
-                    </div>
-                    <div class="modal-hint" style="padding: 8px 16px; font-size: 12px; color: var(--text-muted); background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);">
-                        <span style="margin-right: 12px;">💡 ${i18n['autoTrigger.manageAccountsHintClick'] || '点击邮箱可切换查看配额'}</span>
-                        <span>🔄 ${i18n['autoTrigger.manageAccountsHintSwitch'] || '点击"切换登录"可切换客户端登录账户'}</span>
-                    </div>
-                    <div class="modal-body" id="account-manage-body">
-                        <!-- 账号列表将在这里动态渲染 -->
-                    </div>
-                    <div class="modal-footer">
-                        <button id="add-new-account-btn" class="at-btn at-btn-primary">➕ ${i18n['autoTrigger.addAccount'] || 'Add Account'}</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            // 绑定关闭按钮
-            document.getElementById('close-account-manage-modal')?.addEventListener('click', closeAccountManageModal);
-            
-            // 点击背景关闭
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeAccountManageModal();
-            });
-
-            // 绑定添加账号按钮
-            document.getElementById('add-new-account-btn')?.addEventListener('click', () => {
-                vscode.postMessage({ command: 'autoTrigger.addAccount' });
-            });
-        }
-
-        // 渲染账号列表
-        renderAccountManageList();
-        modal.classList.remove('hidden');
-    }
-
-    function closeAccountManageModal() {
-        const modal = document.getElementById('account-manage-modal');
-        if (modal) modal.classList.add('hidden');
-    }
-
-    function renderAccountManageList() {
-        const body = document.getElementById('account-manage-body');
-        if (!body) return;
-
-        const auth = authorizationStatus;
-        const accounts = auth?.accounts || [];
-        const activeAccount = auth?.activeAccount;
-
-        if (accounts.length === 0) {
-            body.innerHTML = `<div class="account-manage-empty">${i18n['autoTrigger.noAccounts'] || 'No accounts authorized'}</div>`;
-            return;
-        }
-
-        const listHtml = accounts.map(acc => {
-            const isActive = acc.email === activeAccount;
-            // Check if refresh token is invalid (marked by backend when refresh fails)
-            const isInvalid = acc.isInvalid === true;
-            const invalidClass = isInvalid ? ' expired' : '';
-            const icon = isInvalid ? '⚠️' : (isActive ? '✅' : '👤');
-            const invalidBadge = isInvalid ? `<span class="account-manage-badge expired">${i18n['autoTrigger.tokenExpired'] || 'Expired'}</span>` : '';
-            const activeBadge = isActive && !isInvalid ? `<span class="account-manage-badge">${i18n['autoTrigger.accountActive'] || 'Active'}</span>` : '';
-            
-            // 切换登录账户按钮（所有账号都显示）
-            const switchBtn = `<button class="at-btn at-btn-small at-btn-primary account-switch-login-btn" data-email="${acc.email}">${i18n['autoTrigger.switchLoginBtn'] || '切换登录'}</button>`;
-            
-            return `
-                <div class="account-manage-item ${isActive ? 'active' : ''}${invalidClass}" data-email="${acc.email}">
-                    <div class="account-manage-info">
-                        <span class="account-manage-icon">${icon}</span>
-                        <span class="account-manage-email">${acc.email}</span>
-                        ${activeBadge}${invalidBadge}
-                    </div>
-                    <div class="account-manage-actions">
-                        ${switchBtn}
-                        <button class="at-btn at-btn-small at-btn-danger account-remove-btn" data-email="${acc.email}">${i18n['autoTrigger.deleteBtn'] || '删除'}</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        body.innerHTML = `<div class="account-manage-list">${listHtml}</div>`;
-
-        // 绑定点击整行切换查看配额
-        body.querySelectorAll('.account-manage-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                // 如果点击的是按钮，则忽略（按钮已有阻止冒泡，但多一层判断更安全）
-                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                
-                // 如果已激活，不执行操作
-                if (item.classList.contains('active')) return;
-
-                const email = item.dataset.email;
-                if (email) {
-                    vscode.postMessage({ command: 'autoTrigger.switchAccount', email });
-                    closeAccountManageModal();
-                }
-            });
-        });
-
-        // 绑定切换登录账户按钮（需确认）
-        body.querySelectorAll('.account-switch-login-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const email = btn.dataset.email;
-                if (email) {
-                    showSwitchLoginConfirmModal(email);
-                }
-            });
-        });
-
-        // 绑定删除按钮
-        body.querySelectorAll('.account-remove-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const email = btn.dataset.email;
-                if (email && typeof window.openRevokeModalForEmail === 'function') {
-                    window.openRevokeModalForEmail(email);
-                }
-            });
-        });
-    }
-
-    /**
-     * 显示切换登录确认弹窗
-     */
-    function showSwitchLoginConfirmModal(email) {
-        // 创建确认弹窗
-        let modal = document.getElementById('switch-login-confirm-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'switch-login-confirm-modal';
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width: 400px;">
-                    <div class="modal-header">
-                        <h3>${i18n['autoTrigger.switchLoginTitle'] || '切换登录账户'}</h3>
-                        <button class="modal-close" id="switch-login-confirm-close">×</button>
-                    </div>
-                    <div class="modal-body" style="padding: 20px;">
-                        <p style="margin-bottom: 10px;">${i18n['autoTrigger.switchLoginConfirmText'] || '确定要切换到以下账户吗？'}</p>
-                        <p style="font-weight: bold; color: var(--accent-color); margin-bottom: 15px;" id="switch-login-target-email"></p>
-                        <p style="color: var(--warning-color); font-size: 0.9em;">⚠️ ${i18n['autoTrigger.switchLoginWarning'] || '此操作将重启 Antigravity 客户端以完成账户切换。'}</p>
-                    </div>
-                    <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 15px 20px;">
-                        <button class="at-btn at-btn-secondary" id="switch-login-confirm-cancel">${i18n['common.cancel'] || '取消'}</button>
-                        <button class="at-btn at-btn-primary" id="switch-login-confirm-ok">${i18n['common.confirm'] || '确认'}</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            // 绑定关闭按钮
-            document.getElementById('switch-login-confirm-close').addEventListener('click', () => {
-                modal.classList.add('hidden');
-            });
-            document.getElementById('switch-login-confirm-cancel').addEventListener('click', () => {
-                modal.classList.add('hidden');
-            });
-            // 点击遮罩关闭
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                }
-            });
-        }
-
-        // 设置目标邮箱
-        document.getElementById('switch-login-target-email').textContent = email;
-
-        // 绑定确认按钮
-        const okBtn = document.getElementById('switch-login-confirm-ok');
-        const newOkBtn = okBtn.cloneNode(true);
-        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-        newOkBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            // 发送切换登录账户的命令
-            vscode.postMessage({ command: 'autoTrigger.switchLoginAccount', email });
-            closeAccountManageModal();
-        });
-
-        modal.classList.remove('hidden');
-    }
-
-    function updateQuotaSourceInfo() {
-        if (quotaSourceInfo) {
-            quotaSourceInfo.classList.add('hidden');
-        }
-    }
-
-    function renderLoadingCard(source) {
+    function renderLoadingCard() {
         statusDiv.style.display = 'none';
         dashboard.innerHTML = '';
-
-        if (source === 'authorized') {
-            renderAuthorizedLoadingCard();
-        } else {
-            renderLocalLoadingCard();
-        }
+        renderLocalLoadingCard();
     }
 
     function renderLocalLoadingCard() {
@@ -2668,26 +1305,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             <p>${i18n['quotaSource.localLoadingDesc'] || 'Keep the Antigravity client running.'}</p>
         `;
         dashboard.appendChild(card);
-    }
-
-    function renderAuthorizedLoadingCard() {
-        const card = document.createElement('div');
-        card.className = 'offline-card authorized-card';
-        card.innerHTML = `
-            <div class="icon offline-spinner"><span class="spinner"></span></div>
-            <h2>${i18n['quotaSource.authorizedLoadingTitle'] || 'Loading authorized quota...'}</h2>
-            <p>${i18n['quotaSource.authorizedLoadingDesc'] || 'Fetching quota data from the remote API.'}</p>
-            <div class="offline-actions">
-                <button class="btn-secondary" data-action="switch-local">
-                    ${i18n['quotaSource.switchToLocal'] || 'Switch to Local'}
-                </button>
-            </div>
-        `;
-        dashboard.appendChild(card);
-        const switchBtn = card.querySelector('[data-action="switch-local"]');
-        switchBtn?.addEventListener('click', () => {
-            requestQuotaSourceChange('local', { force: true });
-        });
     }
 
     function getRecommendedRank(model) {
@@ -2834,22 +1451,17 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 切换到指定标签页
-     * @param {string} tabId 标签页 ID (如 'auto-trigger')
      */
     function switchToTab(tabId) {
         const tabButtons = document.querySelectorAll('.tab-btn');
         const tabContents = document.querySelectorAll('.tab-content');
 
-        // 查找目标按钮
         const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
         if (!targetBtn) return;
 
-        // 更新按钮状态
         tabButtons.forEach(b => b.classList.remove('active'));
         targetBtn.classList.add('active');
 
-        // 更新内容显示
         tabContents.forEach(content => {
             if (content.id === `tab-${tabId}`) {
                 content.classList.add('active');
@@ -2863,7 +1475,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }
     }
 
-    // ============ 刷新按钮逻辑 ============
 
     function updateRefreshButton() {
         if (isRefreshing) {
@@ -2888,7 +1499,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }, 1000);
     }
 
-    // ============ Toast 通知 ============
 
     function showToast(message, type = 'info') {
         if (!toast) return;
@@ -2896,38 +1506,31 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         toast.textContent = message;
         toast.className = `toast ${type}`;
 
-        // 3秒后隐藏
         setTimeout(() => {
             toast.classList.add('hidden');
         }, 3000);
     }
 
-    // ============ 工具函数 ============
 
     function getHealthColor(percentage) {
-        // 使用配置的阈值
         const warningThreshold = currentConfig.warningThreshold || 30;
         const criticalThreshold = currentConfig.criticalThreshold || 10;
 
-        if (percentage > warningThreshold) return 'var(--success)';  // 绿色
-        if (percentage > criticalThreshold) return 'var(--warning)';  // 黄色
-        return 'var(--danger)';                                       // 红色
+        if (percentage > warningThreshold) return 'var(--success)';
+        if (percentage > criticalThreshold) return 'var(--warning)';
+        return 'var(--danger)';
     }
 
     function getStatusText(percentage) {
-        // 使用配置的阈值
         const warningThreshold = currentConfig.warningThreshold || 30;
         const criticalThreshold = currentConfig.criticalThreshold || 10;
 
-        if (percentage > warningThreshold) return i18n['dashboard.active'] || 'Healthy';   // 健康
-        if (percentage > criticalThreshold) return i18n['dashboard.warning'] || 'Warning';  // 警告
-        return i18n['dashboard.danger'] || 'Danger';                                        // 危险
+        if (percentage > warningThreshold) return i18n['dashboard.active'] || 'Healthy';
+        if (percentage > criticalThreshold) return i18n['dashboard.warning'] || 'Warning';
+        return i18n['dashboard.danger'] || 'Danger';
     }
 
     /**
-     * 解析模型能力，返回图标数组
-     * @param {Object} model 模型对象
-     * @returns {string[]} 能力图标 HTML 数组
      */
 
 
@@ -2945,16 +1548,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
     window.retryConnection = retryConnection;
     window.openLogs = openLogs;
-    window.showLocalAuthImportLoading = showLocalAuthImportLoading;
-    window.openAccountManageModal = () => {
-        if (authUi) {
-            authUi.openAccountManageModal();
-        } else {
-            openAccountManageModal();
-        }
-    };
 
-    // ============ 拖拽排序 ============
 
     function handleDragStart(e) {
         this.style.opacity = '0.4';
@@ -3003,7 +1597,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             // Get updated list of all items in this container
             const updatedItems = Array.from(dashboardOrTbody.querySelectorAll(selector));
 
-            // 检查是否是分组
             const isGroup = dragSrcEl.classList.contains('group-card') || dragSrcEl.classList.contains('list-group-row');
 
             if (isGroup) {
@@ -3033,20 +1626,14 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         });
     }
 
-    // ============ 渲染 ============
 
     function render(snapshot, config) {
         statusDiv.style.display = 'none';
         dashboard.innerHTML = '';
 
-        // 检查离线状态
+        // Offline state
         if (!snapshot.isConnected) {
-            const source = config?.quotaSource || currentQuotaSource;
-            if (source === 'authorized') {
-                renderAuthorizedOfflineCard(snapshot.errorMessage);
-            } else {
-                renderLocalOfflineCard(snapshot.errorMessage);
-            }
+            renderLocalOfflineCard(snapshot.errorMessage);
             return;
         }
 
@@ -3056,15 +1643,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             renderUserProfile(snapshot.userInfo);
         }
 
-        // 更新分组按钮状态
         updateToggleGroupingButton(config?.groupingEnabled);
 
-        // 如果启用了分组显示，渲染分组卡片
         if (config?.groupingEnabled && snapshot.groups && snapshot.groups.length > 0) {
-            // 渲染自动分组按钮区域
             renderAutoGroupBar();
 
-            // 分组排序：支持自定义顺序
             let groups = [...snapshot.groups];
             if (config?.groupOrder?.length > 0) {
                 const orderMap = new Map();
@@ -3074,7 +1657,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                     const idxA = orderMap.has(a.groupId) ? orderMap.get(a.groupId) : 99999;
                     const idxB = orderMap.has(b.groupId) ? orderMap.get(b.groupId) : 99999;
                     if (idxA !== idxB) return idxA - idxB;
-                    // 如果没有自定义顺序，按配额百分比升序（低的在前）
                     return a.remainingPercentage - b.remainingPercentage;
                 });
             }
@@ -3085,7 +1667,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             return;
         }
 
-        // 模型排序
         let models = [...snapshot.models];
         if (config?.modelOrder?.length > 0) {
             const orderMap = new Map();
@@ -3098,7 +1679,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 渲染模型卡片
         models.forEach(model => {
             renderModelCard(model, config?.pinnedModels || [], config?.modelCustomNames || {});
         });
@@ -3123,126 +1703,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         retryBtn?.addEventListener('click', retryConnection);
     }
 
-    function renderAuthorizedOfflineCard(errorMessage) {
-        const isAuthorized = Boolean(authorizationStatus?.isAuthorized);
-        const title = isAuthorized
-            ? (i18n['quotaSource.authorizedOfflineTitle'] || 'Authorized monitoring unavailable')
-            : (i18n['quotaSource.authorizedMissingTitle'] || 'Authorization required');
-        const description = isAuthorized
-            ? (i18n['quotaSource.authorizedOfflineDesc'] || 'Failed to fetch quota from the remote API. Please check your network and try again.')
-            : (i18n['quotaSource.authorizedMissingDesc'] || 'Complete authorization to use authorized monitoring.');
-        const detail = errorMessage ? `<p class="offline-detail">${errorMessage}</p>` : '';
-        const card = document.createElement('div');
-        card.className = 'offline-card authorized-card';
-        card.innerHTML = `
-            <div class="icon">🔐</div>
-            <h2>${title}</h2>
-            <p>${description}</p>
-            ${detail}
-            <div class="offline-actions">
-                <button class="btn-secondary" data-action="switch-local">
-                    ${i18n['quotaSource.switchToLocal'] || 'Switch to Local'}
-                </button>
-                <button class="btn-primary" data-action="authorized-primary">
-                    ${isAuthorized ? (i18n['dashboard.refresh'] || 'Refresh') : (i18n['autoTrigger.authorizeBtn'] || 'Authorize')}
-                </button>
-            </div>
-        `;
-        dashboard.appendChild(card);
-        const switchBtn = card.querySelector('[data-action="switch-local"]');
-        const primaryBtn = card.querySelector('[data-action="authorized-primary"]');
-        switchBtn?.addEventListener('click', () => {
-            requestQuotaSourceChange('local', { force: true });
-        });
-        if (isAuthorized) {
-            primaryBtn?.addEventListener('click', handleRefresh);
-        } else {
-            primaryBtn?.addEventListener('click', () => {
-                openAuthChoiceModal();
-            });
-        }
-    }
-
-    function openAuthChoiceModal() {
-        let modal = document.getElementById('auth-choice-modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'auth-choice-modal';
-            modal.className = 'modal hidden';
-            modal.innerHTML = `
-                <div class="modal-content auth-choice-content">
-                    <div class="modal-header">
-                        <h3>${i18n['authChoice.title'] || '选择登录方式'}</h3>
-                        <button class="close-btn" id="close-auth-choice-modal">×</button>
-                    </div>
-                    <div class="modal-body auth-choice-body">
-                        <div class="auth-choice-info">
-                            <div class="auth-choice-desc">${i18n['authChoice.desc'] || '请选择读取本地已授权账号或授权登录。'}</div>
-                            <div class="auth-choice-tip">${i18n['authChoice.tip'] || '授权登录适用于无客户端；本地读取仅对当前机器生效。'}</div>
-                        </div>
-                        <div class="auth-choice-grid">
-                            <div class="auth-choice-card">
-                                <div class="auth-choice-header">
-                                    <span class="auth-choice-icon">🖥️</span>
-                                    <div>
-                                        <div class="auth-choice-title">${i18n['authChoice.localTitle'] || '读取本地已授权账号'}</div>
-                                        <div class="auth-choice-text">${i18n['authChoice.localDesc'] || '读取本机 Antigravity 客户端已授权账号，不重新授权，仅复用现有授权。'}</div>
-                                    </div>
-                                </div>
-                                <button id="auth-choice-local-btn" class="at-btn at-btn-primary auth-choice-btn">
-                                    ${i18n['authChoice.localBtn'] || '读取本地授权'}
-                                </button>
-                            </div>
-                            <div class="auth-choice-card">
-                                <div class="auth-choice-header">
-                                    <span class="auth-choice-icon">🔐</span>
-                                    <div>
-                                        <div class="auth-choice-title">${i18n['authChoice.oauthTitle'] || '授权登录（云端授权）'}</div>
-                                        <div class="auth-choice-text">${i18n['authChoice.oauthDesc'] || '通过 Google OAuth 新授权，适用于无客户端场景，可撤销。'}</div>
-                                    </div>
-                                </div>
-                                <button id="auth-choice-oauth-btn" class="at-btn at-btn-primary auth-choice-btn">
-                                    ${i18n['authChoice.oauthBtn'] || '去授权登录'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            document.getElementById('close-auth-choice-modal')?.addEventListener('click', closeAuthChoiceModal);
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeAuthChoiceModal();
-            });
-        }
-
-        const oauthBtn = modal.querySelector('#auth-choice-oauth-btn');
-        const localBtn = modal.querySelector('#auth-choice-local-btn');
-        const oauthBtnClone = oauthBtn.cloneNode(true);
-        oauthBtn.parentNode.replaceChild(oauthBtnClone, oauthBtn);
-        const localBtnClone = localBtn.cloneNode(true);
-        localBtn.parentNode.replaceChild(localBtnClone, localBtn);
-
-        modal.querySelector('#auth-choice-oauth-btn')?.addEventListener('click', () => {
-            vscode.postMessage({ command: 'autoTrigger.authorize' });
-            closeAuthChoiceModal();
-        });
-        modal.querySelector('#auth-choice-local-btn')?.addEventListener('click', () => {
-            showLocalAuthImportLoading();
-            vscode.postMessage({ command: 'autoTrigger.importLocal' });
-            closeAuthChoiceModal();
-        });
-
-        modal.classList.remove('hidden');
-    }
-
-    function closeAuthChoiceModal() {
-        const modal = document.getElementById('auth-choice-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    }
-
     function renderAutoGroupBar() {
         const bar = document.createElement('div');
         bar.className = 'auto-group-toolbar';
@@ -3257,24 +1717,20 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         `;
         dashboard.appendChild(bar);
 
-        // 绑定点击事件 - 打开自定义分组弹框
         const btn = bar.querySelector('#manage-group-btn');
         if (btn) {
             btn.addEventListener('click', openCustomGroupingModal);
         }
     }
 
-    // ============ 自定义分组弹框 ============
 
     function openCustomGroupingModal() {
         if (!customGroupingModal || !lastSnapshot) return;
 
-        // 初始化状态
         const models = lastSnapshot.models || [];
         customGroupingState.allModels = models;
         customGroupingState.groupMappings = { ...(currentConfig.groupMappings || {}) };
 
-        // 从现有映射构建分组
         const groupMap = new Map(); // groupId -> { id, name, modelIds }
         const groupNames = currentConfig.groupCustomNames || {};
 
@@ -3282,7 +1738,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             const groupId = customGroupingState.groupMappings[model.modelId];
             if (groupId) {
                 if (!groupMap.has(groupId)) {
-                    // 尝试从 groupNames 获取名称，否则使用默认名称
                     let groupName = '';
                     for (const modelId of Object.keys(groupNames)) {
                         if (customGroupingState.groupMappings[modelId] === groupId) {
@@ -3302,7 +1757,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
         customGroupingState.groups = Array.from(groupMap.values());
 
-        // 渲染弹框内容
         renderCustomGroupingContent();
 
         customGroupingModal.classList.remove('hidden');
@@ -3320,11 +1774,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
         if (!groupsList || !ungroupedList) return;
 
-        // 获取已分组的模型 ID
         const groupedModelIds = new Set();
         customGroupingState.groups.forEach(g => g.modelIds.forEach(id => groupedModelIds.add(id)));
 
-        // 渲染分组列表
         if (customGroupingState.groups.length === 0) {
             groupsList.innerHTML = `<div class="empty-groups-hint">${i18n['customGrouping.noModels'] || 'No groups yet. Click "Add Group" to create one.'}</div>`;
         } else {
@@ -3361,7 +1813,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 `;
             }).join('');
 
-            // 绑定事件
             groupsList.querySelectorAll('.remove-model-btn').forEach(btn => {
                 btn.addEventListener('click', handleRemoveModel);
             });
@@ -3376,7 +1827,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 渲染未分组模型
         const ungroupedModels = customGroupingState.allModels.filter(m => !groupedModelIds.has(m.modelId));
 
         if (ungroupedModels.length === 0) {
@@ -3441,11 +1891,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         const group = customGroupingState.groups[groupIndex];
         if (!group) return;
 
-        // 获取已分组的模型
         const groupedModelIds = new Set();
         customGroupingState.groups.forEach(g => g.modelIds.forEach(id => groupedModelIds.add(id)));
 
-        // 获取可用模型（未分组的）
         const availableModels = customGroupingState.allModels.filter(m => !groupedModelIds.has(m.modelId));
 
         if (availableModels.length === 0) {
@@ -3453,7 +1901,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             return;
         }
 
-        // 获取组的配额签名（如果组已有模型）
         let groupSignature = null;
         if (group.modelIds.length > 0) {
             const firstModelId = group.modelIds[0];
@@ -3466,7 +1913,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         }
 
-        // 创建下拉选择菜单
         showModelSelectDropdown(e.target, availableModels, groupSignature, (selectedModelId) => {
             group.modelIds.push(selectedModelId);
             renderCustomGroupingContent();
@@ -3474,7 +1920,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function showModelSelectDropdown(anchor, models, groupSignature, onSelect) {
-        // 移除已存在的下拉框
         const existingDropdown = document.querySelector('.model-select-dropdown');
         if (existingDropdown) {
             existingDropdown.remove();
@@ -3483,13 +1928,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         const dropdown = document.createElement('div');
         dropdown.className = 'model-select-dropdown';
 
-        // 计算位置
         const rect = anchor.getBoundingClientRect();
         dropdown.style.position = 'fixed';
         dropdown.style.left = rect.left + 'px';
         dropdown.style.top = (rect.bottom + 4) + 'px';
 
-        // 计算每个模型的兼容性
         const modelsWithCompatibility = models.map(model => {
             let isCompatible = true;
             let incompatibleReason = '';
@@ -3507,14 +1950,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             return { model, isCompatible, incompatibleReason };
         });
 
-        // 排序：兼容的排在前面
         modelsWithCompatibility.sort((a, b) => {
             if (a.isCompatible && !b.isCompatible) return -1;
             if (!a.isCompatible && b.isCompatible) return 1;
             return 0;
         });
 
-        // 检查是否有兼容的模型
         const hasCompatibleModels = modelsWithCompatibility.some(m => m.isCompatible);
 
         dropdown.innerHTML = `
@@ -3548,7 +1989,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
         document.body.appendChild(dropdown);
 
-        // 选中计数和确认按钮逻辑
         const confirmBtn = dropdown.querySelector('.btn-confirm-add');
         const countSpan = dropdown.querySelector('.selected-count');
         const allCheckboxes = dropdown.querySelectorAll('.model-checkbox');
@@ -3557,15 +1997,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             const checkedBoxes = dropdown.querySelectorAll('.model-checkbox:checked');
             const selectedCount = checkedBoxes.length;
 
-            // 更新计数和按钮状态
             if (countSpan) countSpan.textContent = selectedCount;
             if (confirmBtn) confirmBtn.disabled = selectedCount === 0;
 
-            // 获取当前选中模型的签名（用于动态兼容性检查）
-            let currentSignature = groupSignature; // 使用分组已有的签名
+            let currentSignature = groupSignature;
 
             if (!currentSignature && selectedCount > 0) {
-                // 如果分组为空，使用第一个选中模型的签名
                 const firstCheckedId = checkedBoxes[0].value;
                 const firstModel = modelsWithCompatibility.find(m => m.model.modelId === firstCheckedId);
                 if (firstModel) {
@@ -3576,9 +2013,8 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 }
             }
 
-            // 更新所有 checkbox 的禁用状态
             allCheckboxes.forEach(cb => {
-                if (cb.checked) return; // 已勾选的不处理
+                if (cb.checked) return;
 
                 const modelId = cb.value;
                 const modelData = modelsWithCompatibility.find(m => m.model.modelId === modelId);
@@ -3587,7 +2023,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 const item = cb.closest('.model-select-item');
                 if (!item) return;
 
-                // 检查兼容性
                 let isCompatible = true;
                 let reason = '';
 
@@ -3604,7 +2039,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 cb.disabled = !isCompatible;
                 item.classList.toggle('disabled', !isCompatible);
 
-                // 更新或移除不兼容原因显示
                 let reasonSpan = item.querySelector('.incompatible-reason');
                 if (!isCompatible) {
                     if (!reasonSpan) {
@@ -3625,21 +2059,18 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         });
 
-        // 确认按钮点击
         if (confirmBtn) {
             confirmBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const selectedIds = Array.from(dropdown.querySelectorAll('.model-checkbox:checked'))
                     .map(cb => cb.value);
                 if (selectedIds.length > 0) {
-                    // 批量添加
                     selectedIds.forEach(modelId => onSelect(modelId));
                     dropdown.remove();
                 }
             });
         }
 
-        // 点击外部关闭
         const closeHandler = (e) => {
             if (!dropdown.contains(e.target) && e.target !== anchor) {
                 dropdown.remove();
@@ -3652,14 +2083,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function handleSmartGroup() {
-        // 使用固定分组配置（与桌面端一致）
         const models = customGroupingState.allModels;
         if (!models || models.length === 0) {
             showToast(i18n['customGrouping.noModels'] || 'No models available', 'info');
             return;
         }
 
-        // 固定分组配置（使用精确模型 ID）
         const defaultGroups = [
             {
                 id: 'claude_45',
@@ -3695,7 +2124,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         ];
 
-        // 保存现有分组名称映射（modelId -> groupName）
         const existingGroupNames = {};
         for (const group of customGroupingState.groups) {
             for (const modelId of group.modelIds) {
@@ -3703,7 +2131,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         }
 
-        // 按固定分组分配模型
         const groupMap = new Map(); // groupId -> { id, name, modelIds }
         const matchedModels = new Set();
 
@@ -3711,7 +2138,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             const groupModels = [];
             
             for (const model of models) {
-                // 精确匹配模型 ID
                 if (defaultGroup.modelIds.includes(model.modelId)) {
                     groupModels.push(model.modelId);
                     matchedModels.add(model.modelId);
@@ -3719,7 +2145,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
 
             if (groupModels.length > 0) {
-                // 尝试继承现有分组名称
                 let inheritedName = '';
                 for (const modelId of groupModels) {
                     if (existingGroupNames[modelId]) {
@@ -3736,17 +2161,15 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         }
 
-        // 未匹配的模型放入 "Other" 分组
         const ungroupedModels = models.filter(m => !matchedModels.has(m.modelId));
         if (ungroupedModels.length > 0) {
             groupMap.set('other', {
                 id: 'other',
-                name: i18n['customGrouping.other'] || '其他',
+                name: i18n['customGrouping.other'] || 'Other',
                 modelIds: ungroupedModels.map(m => m.modelId)
             });
         }
 
-        // 转换为数组
         customGroupingState.groups = Array.from(groupMap.values());
 
         renderCustomGroupingContent();
@@ -3755,28 +2178,22 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     function saveCustomGrouping() {
-        // 检查是否有空分组
         const emptyGroups = customGroupingState.groups.filter(g => g.modelIds.length === 0);
         if (emptyGroups.length > 0) {
-            // 移除空分组
             customGroupingState.groups = customGroupingState.groups.filter(g => g.modelIds.length > 0);
         }
 
-        // 构建新的 groupMappings
         const newMappings = {};
         const newGroupNames = {};
 
         for (const group of customGroupingState.groups) {
-            // 生成稳定的 groupId
             const stableGroupId = group.modelIds.sort().join('_');
             for (const modelId of group.modelIds) {
                 newMappings[modelId] = stableGroupId;
-                // 使用锚点共识机制保存分组名称
                 newGroupNames[modelId] = group.name;
             }
         }
 
-        // 发送到扩展保存
         vscode.postMessage({
             command: 'saveCustomGrouping',
             customGroupMappings: newMappings,
@@ -3791,7 +2208,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     let isProfileExpanded = false;
 
     function renderUserProfile(userInfo) {
-        // 如果用户选择隐藏计划详情，直接返回不渲染
         if (isProfileHidden) {
             return;
         }
@@ -3892,7 +2308,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         if (maskBtn) {
             maskBtn.addEventListener('click', () => {
                 isDataMasked = !isDataMasked;
-                // 发送消息到扩展，持久化存储到配置
                 vscode.postMessage({ command: 'updateDataMasked', dataMasked: isDataMasked });
             });
         }
@@ -3926,7 +2341,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         `;
     }
 
-    // ============ 富文本工具提示 ============
 
     function initRichTooltip() {
         const tooltip = document.createElement('div');
@@ -3941,7 +2355,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 activeTarget = target;
                 const html = target.getAttribute('data-tooltip-html');
 
-                // 解码 HTML
                 const decodedHtml = decodeURIComponent(html);
 
                 tooltip.innerHTML = decodedHtml;
@@ -3950,11 +2363,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 const rect = target.getBoundingClientRect();
                 const tooltipRect = tooltip.getBoundingClientRect();
 
-                // 计算位置：默认在下方，如果下方空间不足则在上方
                 let top = rect.bottom + 8;
                 let left = rect.left + (rect.width - tooltipRect.width) / 2;
 
-                // 边界检查
                 if (top + tooltipRect.height > window.innerHeight) {
                     top = rect.top - tooltipRect.height - 8;
                 }
@@ -3976,7 +2387,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         });
 
-        // 滚动时隐藏
         window.addEventListener('scroll', () => {
             if (activeTarget) {
                 activeTarget = null;
@@ -3985,23 +2395,12 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         }, true);
     }
 
-    function escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
     /**
-     * 解析模型能力，返回能力列表
      */
     function getModelCapabilityList(model) {
         const caps = [];
         const mime = model.supportedMimeTypes || {};
 
-        // 1. 图片能力
         if (model.supportsImages || Object.keys(mime).some(k => k.startsWith('image/'))) {
             caps.push({
                 icon: '🖼️',
@@ -4009,7 +2408,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 2. 文档能力
         if (mime['application/pdf'] || mime['text/plain'] || mime['application/rtf']) {
             caps.push({
                 icon: '📄',
@@ -4017,7 +2415,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 3. 音视频能力
         if (Object.keys(mime).some(k => k.startsWith('video/') || k.startsWith('audio/'))) {
             caps.push({
                 icon: '🎬',
@@ -4029,7 +2426,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
     }
 
     /**
-     * 生成能力 Tooltip HTML
      */
     function generateCapabilityTooltip(caps) {
         return caps.map(cap =>
@@ -4048,7 +2444,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         card.setAttribute('data-group-id', group.groupId);
         card.setAttribute('draggable', 'true');
 
-        // 绑定拖拽事件
         card.addEventListener('dragstart', handleDragStart, false);
         card.addEventListener('dragenter', handleDragEnter, false);
         card.addEventListener('dragover', handleDragOver, false);
@@ -4056,13 +2451,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         card.addEventListener('drop', handleDrop, false);
         card.addEventListener('dragend', handleDragEnd, false);
 
-        // 生成组内模型列表（带能力图标）
         const modelList = group.models.map(m => {
             const caps = getModelCapabilityList(m);
             const tagHtml = m.tagTitle ? `<span class="tag-new">${m.tagTitle}</span>` : '';
             const recClass = m.isRecommended ? ' recommended' : '';
 
-            // 如果有能力，添加悬浮属性
             let tooltipAttr = '';
             let capsIndicator = '';
             if (caps.length > 0) {
@@ -4111,7 +2504,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             </div>
         `;
 
-        // 绑定重命名按钮事件 - 打开模态框
         const renameBtn = card.querySelector('.rename-group-btn');
         if (renameBtn) {
             renameBtn.addEventListener('click', (e) => {
@@ -4124,7 +2516,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             });
         }
 
-        // 绑定 pin 开关事件
         const pinToggle = card.querySelector('.group-pin-toggle');
         if (pinToggle) {
             pinToggle.addEventListener('change', (_e) => {
@@ -4143,26 +2534,21 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         const color = getHealthColor(pct);
         const isPinned = pinnedModels.includes(model.modelId);
 
-        // 获取自定义名称，如果没有则使用原始 label
         const displayName = (modelCustomNames && modelCustomNames[model.modelId]) || model.label;
         const originalLabel = model.label;
 
-        // 生成能力数据
         const caps = getModelCapabilityList(model);
         let capsIconHtml = '';
         let tooltipAttr = '';
 
-        // 如果有能力，生成标题栏图标，并设置 tooltip
         if (caps.length > 0) {
             const tooltipHtml = encodeURIComponent(generateCapabilityTooltip(caps));
             tooltipAttr = ` data-tooltip-html="${tooltipHtml}"`;
             capsIconHtml = `<span class="title-caps-trigger">✨</span>`;
         }
 
-        // 生成 New 标签
         const tagHtml = model.tagTitle ? `<span class="tag-new">${model.tagTitle}</span>` : '';
 
-        // 推荐模型高亮样式
         const recommendedClass = model.isRecommended ? ' card-recommended' : '';
 
         const card = document.createElement('div');
@@ -4170,7 +2556,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         card.setAttribute('draggable', 'true');
         card.setAttribute('data-id', model.modelId);
 
-        // 绑定拖拽事件
         card.addEventListener('dragstart', handleDragStart, false);
         card.addEventListener('dragenter', handleDragEnter, false);
         card.addEventListener('dragover', handleDragOver, false);
@@ -4214,7 +2599,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             </div>
         `;
 
-        // 绑定重命名按钮事件
         const renameBtn = card.querySelector('.rename-model-btn');
         if (renameBtn) {
             renameBtn.addEventListener('click', (e) => {
@@ -4226,364 +2610,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         dashboard.appendChild(card);
     }
 
-    // ============ 公告系统 ============
-
-    // 公告状态
-    let announcementState = {
-        announcements: [],
-        unreadIds: [],
-        popupAnnouncement: null,
-    };
-    let currentPopupAnnouncement = null;
-    let shownPopupIds = new Set();  // 记录已弹过的公告 ID，避免重复弹框
-
-    function updateAnnouncementBadge() {
-        const badge = document.getElementById('announcement-badge');
-        if (badge) {
-            const count = announcementState.unreadIds.length;
-            if (count > 0) {
-                badge.textContent = count > 9 ? '9+' : count;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
-    }
-
-    function openAnnouncementList() {
-        vscode.postMessage({ command: 'announcement.getState' });
-        const modal = document.getElementById('announcement-list-modal');
-        if (modal) modal.classList.remove('hidden');
-    }
-
-    function closeAnnouncementList() {
-        const modal = document.getElementById('announcement-list-modal');
-        if (modal) modal.classList.add('hidden');
-    }
-
-    function renderAnnouncementList() {
-        const container = document.getElementById('announcement-list');
-        if (!container) return;
-
-        const announcements = announcementState.announcements || [];
-        if (announcements.length === 0) {
-            container.innerHTML = `<div class="announcement-empty">${i18n['announcement.empty'] || 'No notifications'}</div>`;
-            return;
-        }
-
-        const typeIcons = {
-            feature: '✨',
-            warning: '⚠️',
-            info: 'ℹ️',
-            urgent: '🚨',
-        };
-
-        container.innerHTML = announcements.map(ann => {
-            const isUnread = announcementState.unreadIds.includes(ann.id);
-            const icon = typeIcons[ann.type] || 'ℹ️';
-            const timeAgo = formatTimeAgo(ann.createdAt);
-
-            return `
-                <div class="announcement-item ${isUnread ? 'unread' : ''}" data-id="${ann.id}">
-                    <span class="announcement-icon">${icon}</span>
-                    <div class="announcement-info">
-                        <div class="announcement-title">
-                            ${isUnread ? '<span class="announcement-unread-dot"></span>' : ''}
-                            <span>${ann.title}</span>
-                        </div>
-                        <div class="announcement-summary">${ann.summary}</div>
-                        <div class="announcement-time">${timeAgo}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // 绑定点击事件
-        container.querySelectorAll('.announcement-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const id = item.dataset.id;
-                const ann = announcements.find(a => a.id === id);
-                if (ann) {
-                    // 若未读，点击即标记已读
-                    if (announcementState.unreadIds.includes(id)) {
-                        vscode.postMessage({
-                            command: 'announcement.markAsRead',
-                            id: id
-                        });
-                        // 乐观更新本地状态
-                        announcementState.unreadIds = announcementState.unreadIds.filter(uid => uid !== id);
-                        updateAnnouncementBadge();
-                        item.classList.remove('unread');
-                        const dot = item.querySelector('.announcement-unread-dot');
-                        if (dot) dot.remove();
-                    }
-                    showAnnouncementPopup(ann, true);
-                    closeAnnouncementList();
-                }
-            });
-        });
-    }
-
-    function formatTimeAgo(dateStr) {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return i18n['announcement.timeAgo.justNow'] || 'Just now';
-        if (diffMins < 60) return (i18n['announcement.timeAgo.minutesAgo'] || '{count}m ago').replace('{count}', diffMins);
-        if (diffHours < 24) return (i18n['announcement.timeAgo.hoursAgo'] || '{count}h ago').replace('{count}', diffHours);
-        return (i18n['announcement.timeAgo.daysAgo'] || '{count}d ago').replace('{count}', diffDays);
-    }
-
-    function showAnnouncementPopup(ann, fromList = false) {
-        currentPopupAnnouncement = ann;
-
-        const typeLabels = {
-            feature: i18n['announcement.type.feature'] || '✨ New Feature',
-            warning: i18n['announcement.type.warning'] || '⚠️ Warning',
-            info: i18n['announcement.type.info'] || 'ℹ️ Info',
-            urgent: i18n['announcement.type.urgent'] || '🚨 Urgent',
-        };
-
-        const popupType = document.getElementById('announcement-popup-type');
-        const popupTitle = document.getElementById('announcement-popup-title');
-        const popupContent = document.getElementById('announcement-popup-content');
-        const popupAction = document.getElementById('announcement-popup-action');
-        const popupGotIt = document.getElementById('announcement-popup-got-it');
-
-        // Header buttons
-        const backBtn = document.getElementById('announcement-popup-back');
-        const closeBtn = document.getElementById('announcement-popup-close');
-
-        if (popupType) {
-            popupType.textContent = typeLabels[ann.type] || typeLabels.info;
-            popupType.className = `announcement-type-badge ${ann.type}`;
-        }
-        if (popupTitle) popupTitle.textContent = ann.title;
-
-        // 渲染内容和图片
-        if (popupContent) {
-            let contentHtml = `<div class="announcement-text">${escapeHtml(ann.content).replace(/\n/g, '<br>')}</div>`;
-            
-            // 如果有图片，渲染图片区域（带骨架屏占位符）
-            if (ann.images && ann.images.length > 0) {
-                contentHtml += '<div class="announcement-images">';
-                for (const img of ann.images) {
-                    contentHtml += `
-                        <div class="announcement-image-item">
-                            <img src="${escapeHtml(img.url)}" 
-                                 alt="${escapeHtml(img.alt || img.label || '')}" 
-                                 class="announcement-image"
-                                 data-preview-url="${escapeHtml(img.url)}"
-                                 title="${i18n['announcement.clickToEnlarge'] || 'Click to enlarge'}" />
-                            <div class="image-skeleton"></div>
-                            ${img.label ? `<div class="announcement-image-label">${escapeHtml(img.label)}</div>` : ''}
-                        </div>
-                    `;
-                }
-                contentHtml += '</div>';
-            }
-
-            popupContent.innerHTML = contentHtml;
-            
-            // 绑定图片加载事件
-            popupContent.querySelectorAll('.announcement-image').forEach(imgEl => {
-                // 图片加载完成
-                imgEl.addEventListener('load', () => {
-                    imgEl.classList.add('loaded');
-                });
-                
-                // 图片加载失败
-                imgEl.addEventListener('error', () => {
-                    const item = imgEl.closest('.announcement-image-item');
-                    if (item) {
-                        const skeleton = item.querySelector('.image-skeleton');
-                        if (skeleton) skeleton.remove();
-                        imgEl.style.display = 'none';
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'image-load-error';
-                        errorDiv.innerHTML = `
-                            <span class="icon">🖼️</span>
-                            <span>${i18n['announcement.imageLoadFailed'] || 'Image failed to load'}</span>
-                        `;
-                        item.insertBefore(errorDiv, item.firstChild);
-                    }
-                });
-                
-                // 点击放大
-                imgEl.addEventListener('click', () => {
-                    const url = imgEl.getAttribute('data-preview-url');
-                    if (url) showImagePreview(url);
-                });
-            });
-        }
-
-        // 处理操作按钮
-        if (ann.action && ann.action.label) {
-            if (popupAction) {
-                popupAction.textContent = ann.action.label;
-                popupAction.classList.remove('hidden');
-            }
-            if (popupGotIt) popupGotIt.classList.add('hidden');
-        } else {
-            if (popupAction) popupAction.classList.add('hidden');
-            if (popupGotIt) popupGotIt.classList.remove('hidden');
-        }
-
-        // 处理返回/关闭按钮显示
-        if (fromList) {
-            if (backBtn) {
-                backBtn.classList.remove('hidden');
-                backBtn.onclick = () => {
-                    closeAnnouncementPopup(true); // 跳过动画
-                    openAnnouncementList(); // 返回列表
-                };
-            }
-            // 从列表进入时，关闭也跳过动画
-            if (closeBtn) {
-                closeBtn.onclick = () => {
-                    closeAnnouncementPopup(true);
-                };
-            }
-        } else {
-            if (backBtn) backBtn.classList.add('hidden');
-            // 自动弹窗时，关闭使用动画
-            if (closeBtn) {
-                closeBtn.onclick = () => {
-                    closeAnnouncementPopup();
-                };
-            }
-        }
-
-        const modal = document.getElementById('announcement-popup-modal');
-        if (modal) modal.classList.remove('hidden');
-    }
-
-    function closeAnnouncementPopup(skipAnimation = false) {
-        const modal = document.getElementById('announcement-popup-modal');
-        const modalContent = modal?.querySelector('.announcement-popup-content');
-        const bellBtn = document.getElementById('announcement-btn');
-
-        if (modal && modalContent && bellBtn && !skipAnimation) {
-            // 获取铃铛按钮的位置
-            const bellRect = bellBtn.getBoundingClientRect();
-            const contentRect = modalContent.getBoundingClientRect();
-
-            // 计算目标位移
-            const targetX = bellRect.left + bellRect.width / 2 - (contentRect.left + contentRect.width / 2);
-            const targetY = bellRect.top + bellRect.height / 2 - (contentRect.top + contentRect.height / 2);
-
-            // 添加飞向铃铛的动画
-            modalContent.style.transition = 'transform 0.4s ease-in, opacity 0.4s ease-in';
-            modalContent.style.transform = `translate(${targetX}px, ${targetY}px) scale(0.1)`;
-            modalContent.style.opacity = '0';
-
-            // 铃铛抖动效果
-            bellBtn.classList.add('bell-shake');
-
-            // 动画结束后隐藏模态框并重置样式
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalContent.style.transition = '';
-                modalContent.style.transform = '';
-                modalContent.style.opacity = '';
-                bellBtn.classList.remove('bell-shake');
-            }, 400);
-        } else if (modal) {
-            modal.classList.add('hidden');
-        }
-
-        currentPopupAnnouncement = null;
-    }
-
-    function handleAnnouncementGotIt() {
-        if (currentPopupAnnouncement) {
-            vscode.postMessage({
-                command: 'announcement.markAsRead',
-                id: currentPopupAnnouncement.id
-            });
-        }
-        closeAnnouncementPopup();
-    }
-
-    function handleAnnouncementAction() {
-        if (currentPopupAnnouncement && currentPopupAnnouncement.action) {
-            const action = currentPopupAnnouncement.action;
-
-            // 先标记已读
-            vscode.postMessage({
-                command: 'announcement.markAsRead',
-                id: currentPopupAnnouncement.id
-            });
-
-            // 执行操作
-            if (action.type === 'tab') {
-                switchToTab(action.target);
-            } else if (action.type === 'url') {
-                vscode.postMessage({ command: 'openUrl', url: action.target });
-            } else if (action.type === 'command') {
-                vscode.postMessage({
-                    command: 'executeCommand',
-                    commandId: action.target,
-                    commandArgs: action.arguments || []
-                });
-            }
-        }
-        closeAnnouncementPopup();
-    }
-
-    function markAllAnnouncementsRead() {
-        vscode.postMessage({ command: 'announcement.markAllAsRead' });
-        showToast(i18n['announcement.markAllRead'] || 'All marked as read', 'success');
-    }
-
-    function handleAnnouncementState(state) {
-        announcementState = state;
-        updateAnnouncementBadge();
-        renderAnnouncementList();
-
-        // 检查是否需要弹出公告（只弹未弹过的）
-        if (state.popupAnnouncement && !shownPopupIds.has(state.popupAnnouncement.id)) {
-            shownPopupIds.add(state.popupAnnouncement.id);
-            // 延迟弹出，等待页面渲染完成
-            setTimeout(() => {
-                showAnnouncementPopup(state.popupAnnouncement);
-            }, 600);
-        }
-    }
-
-    // ============ 图片预览 ============
-
-    function showImagePreview(imageUrl) {
-        // 创建预览遮罩
-        const overlay = document.createElement('div');
-        overlay.className = 'image-preview-overlay';
-        overlay.innerHTML = `
-            <div class="image-preview-container">
-                <img src="${imageUrl}" class="image-preview-img" />
-                <div class="image-preview-hint">${i18n['announcement.clickToClose'] || 'Click to close'}</div>
-            </div>
-        `;
-
-        // 点击关闭
-        overlay.addEventListener('click', () => {
-            overlay.classList.add('closing');
-            setTimeout(() => overlay.remove(), 200);
-        });
-
-        document.body.appendChild(overlay);
-
-        // 触发动画
-        requestAnimationFrame(() => overlay.classList.add('visible'));
-    }
-
-    // 暴露到 window 供 onclick 调用
-    window.showImagePreview = showImagePreview;
-
-    // ============ 启动 ============
 
     init();
 
