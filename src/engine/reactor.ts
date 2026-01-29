@@ -1,6 +1,4 @@
 /**
- * Antigravity Cockpit - 反应堆核心
- * 负责与 Antigravity API 通信，获取配额数据
  */
 
 import * as https from 'https';
@@ -23,8 +21,6 @@ import { readQuotaCache, writeQuotaCache, QuotaCacheModel, QuotaCacheRecord, Quo
 
 
 /**
- * 反应堆核心类
- * 管理与后端 API 的通信
  */
 export class ReactorCore {
     private port: number = 0;
@@ -36,17 +32,11 @@ export class ReactorCore {
     public currentInterval: number = 0;
     private lastScanDiagnostics?: ScanDiagnostics;
     
-    /** 上一次的配额快照缓存 */
     private lastSnapshot?: QuotaSnapshot;
-    /** 上一次的原始 API 响应缓存（用于 reprocess 时重新生成分组） */
     private lastRawResponse?: ServerUserStatusResponse;
-    /** 本地配额上次拉取时间 */
     private lastLocalFetchedAt?: number;
-    /** 是否已经成功获取过配额数据（用于决定是否上报后续错误） */
     private hasSuccessfulSync: boolean = false;
-    /** 初始化同步重试标识，用于中断本地重试流程 */
     private initRetryToken: number = 0;
-    /** 当前用户在 Antigravity 中选中的模型 ID */
     private activeModelId?: string;
 
     constructor() {
@@ -54,7 +44,6 @@ export class ReactorCore {
     }
 
     /**
-     * 启动反应堆，设置连接参数
      */
     engage(port: number, token: string, diagnostics?: ScanDiagnostics): void {
         this.port = port;
@@ -64,7 +53,6 @@ export class ReactorCore {
     }
 
     /**
-     * 获取最新的配额快照
      */
     getLatestSnapshot(): QuotaSnapshot | undefined {
         return this.lastSnapshot;
@@ -185,7 +173,6 @@ export class ReactorCore {
     }
 
     /**
-     * 发送 HTTP 请求
      */
     private async transmit<T>(endpoint: string, payload: object): Promise<T> {
         return new Promise((resolve, reject) => {
@@ -209,7 +196,7 @@ export class ReactorCore {
                 },
                 rejectUnauthorized: false,
                 timeout: TIMING.HTTP_TIMEOUT_MS,
-                agent: false, // 绕过代理，直接连接 localhost
+                agent: false,
             };
 
             logger.info(`Transmitting signal to ${endpoint}`, JSON.parse(data));
@@ -222,12 +209,16 @@ export class ReactorCore {
                         statusCode: res.statusCode,
                         bodyLength: body.length,
                     });
-                    // logger.debug('Signal Body:', body); // 取消注释以查看完整响应
 
                     // Check for empty body (often happens during process startup)
                     if (!body || body.trim().length === 0) {
                         logger.warn('Received empty response from API');
                         reject(new Error('Signal Corrupted: Empty response from server'));
+                        return;
+                    }
+
+                    if (res.statusCode === 404 || /404 page not found/i.test(body)) {
+                        reject(new Error(`Not Found: ${endpoint}`));
                         return;
                     }
 
@@ -257,43 +248,34 @@ export class ReactorCore {
     }
 
     /**
-     * 注册遥测数据更新回调
      */
     onTelemetry(cb: (data: QuotaSnapshot) => void): void {
         this.updateHandler = cb;
     }
 
     /**
-     * 注册故障回调
      */
     onMalfunction(cb: (error: Error) => void): void {
         this.errorHandler = cb;
     }
 
     /**
-     * 启动定时同步
      */
     startReactor(interval: number): void {
         this.shutdown();
         this.currentInterval = interval;
         logger.info(`Reactor Pulse: ${interval}ms`);
 
-        // 启动时使用带重试的初始化同步，失败会自动重试
         this.initRetryToken += 1;
         const retryToken = this.initRetryToken;
         this.initWithRetry(3, 0, retryToken);
 
-        // 定时同步（失败不重试，等下一个周期自然重试）
         this.pulseTimer = setInterval(() => {
             this.syncTelemetry();
         }, interval);
     }
 
     /**
-     * 带重试的初始化同步
-     * 仅在启动时调用，失败会自动重试，用户无感
-     * @param maxRetries 最大重试次数
-     * @param currentRetry 当前重试次数
      */
     private async initWithRetry(
         maxRetries: number = 3,
@@ -320,7 +302,6 @@ export class ReactorCore {
                 return;
             }
             if (currentRetry < maxRetries) {
-                // 还有重试机会，使用指数退避
                 const delay = 2000 * (currentRetry + 1);  // 2s, 4s, 6s
                 const sourceInfo = source ? `source=${source}` : 'source=unknown';
                 const endpointInfo = `endpoint=${endpoint}`;
@@ -330,12 +311,10 @@ export class ReactorCore {
                 return this.initWithRetry(maxRetries, currentRetry + 1, retryToken);
             }
             
-            // 超过最大重试次数，触发错误回调
             const sourceInfo = source ? `source=${source}` : 'source=unknown';
             const endpointInfo = `endpoint=${endpoint}`;
             logger.error(`Init sync failed after ${maxRetries} retries (${sourceInfo}, ${endpointInfo}): ${err.message}`);
             
-            // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
             if (!isServerError(err)) {
                 logger.warn(`[Init] Initial sync failed: ${err.message}`);
             }
@@ -346,7 +325,6 @@ export class ReactorCore {
     }
 
     /**
-     * 中断初始化重试流程
      */
     cancelInitRetry(): void {
         this.initRetryToken += 1;
@@ -368,14 +346,12 @@ export class ReactorCore {
     }
 
     /**
-     * 延迟指定毫秒数
      */
     private delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
-     * 关闭反应堆
      */
     shutdown(): void {
         if (this.pulseTimer) {
@@ -385,7 +361,6 @@ export class ReactorCore {
     }
 
     /**
-     * 同步遥测数据（用于定时器调用，自带错误处理）
      */
     async syncTelemetry(): Promise<void> {
         try {
@@ -400,8 +375,6 @@ export class ReactorCore {
             const sourceInfo = source ? `source=${source}` : 'source=local';
             logger.error(`Telemetry Sync Failed (${sourceInfo}, endpoint=${API_ENDPOINTS.GET_USER_STATUS}): ${err.message}`);
             
-            // 只有在从未成功获取过配额时才上报，成功后的定时同步失败不上报
-            // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
             if (!this.hasSuccessfulSync && !isServerError(err)) {
                 logger.warn(`[Telemetry] Initial sync failed: ${err.message}`);
             }
@@ -412,7 +385,6 @@ export class ReactorCore {
     }
 
     /**
-     * 同步遥测数据核心逻辑（可抛出异常，用于重试机制）
      */
     private async syncTelemetryCore(): Promise<void> {
         try {
@@ -427,19 +399,87 @@ export class ReactorCore {
     }
 
     private async fetchLocalTelemetry(): Promise<QuotaSnapshot> {
-        const raw = await this.transmit<ServerUserStatusResponse>(
-            API_ENDPOINTS.GET_USER_STATUS,
-            {
-                metadata: {
-                    ideName: 'antigravity',
-                    extensionName: 'antigravity',
-                    locale: 'en',
-                },
+        const payload = {
+            metadata: {
+                ideName: 'antigravity',
+                extensionName: 'antigravity',
+                locale: 'en',
             },
-        );
-        this.lastRawResponse = raw; // 缓存原始响应
-        this.lastLocalFetchedAt = Date.now();
-        return this.decodeSignal(raw);
+        };
+
+        const maxAttempts = 4;
+        const delays = [500, 1000, 2000];
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            let raw: ServerUserStatusResponse;
+            try {
+                raw = await this.transmit<ServerUserStatusResponse>(
+                    API_ENDPOINTS.GET_USER_STATUS,
+                    payload,
+                );
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                if (/Not Found:/i.test(err.message)) {
+                    raw = await this.transmit<ServerUserStatusResponse>(
+                        API_ENDPOINTS.GET_USER_STATUS_SEAT,
+                        payload,
+                    );
+                } else {
+                    throw err;
+                }
+            }
+            this.lastRawResponse = raw;
+            this.lastLocalFetchedAt = Date.now();
+            try {
+                return this.decodeSignal(raw);
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                if (!this.isLanguageServerNotReady(err) || attempt >= maxAttempts - 1) {
+                    throw err;
+                }
+                logger.warn(`[ReactorCore] Language server not ready; warmup and retry ${attempt + 1}/${maxAttempts - 1}: ${err.message}`);
+                await this.warmupLanguageServer();
+                await this.delay(delays[Math.min(attempt, delays.length - 1)]);
+            }
+        }
+
+        throw new Error('Language server not ready after retries');
+    }
+
+    private isLanguageServerNotReady(error: Error): boolean {
+        return /LanguageServerClient must be initialized first/i.test(error.message);
+    }
+
+    private async warmupLanguageServer(): Promise<void> {
+        if (!this.port) {
+            return;
+        }
+        await new Promise<void>((resolve) => {
+            const data = JSON.stringify({ wrapper_data: {} });
+            const opts: https.RequestOptions = {
+                hostname: '127.0.0.1',
+                port: this.port,
+                path: API_ENDPOINTS.GET_UNLEASH_DATA,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(data),
+                    'Connect-Protocol-Version': '1',
+                    'X-Codeium-Csrf-Token': this.token,
+                },
+                timeout: 3000,
+                agent: false,
+            };
+
+            const req = https.request(opts, () => resolve());
+            req.on('error', () => resolve());
+            req.on('timeout', () => {
+                req.destroy();
+                resolve();
+            });
+            req.write(data);
+            req.end();
+        });
     }
 
     private async tryFetchLocalTelemetry(): Promise<QuotaSnapshot | null> {
@@ -456,7 +496,6 @@ export class ReactorCore {
     }
 
     /**
-     * 发布遥测数据到 UI
      */
     private publishTelemetry(telemetry: QuotaSnapshot, _source?: 'local'): void {
         telemetry.activeModelId = this.activeModelId;
@@ -474,7 +513,6 @@ export class ReactorCore {
             logger.info('Quota Update: No models available');
         }
 
-        // 标记已成功获取过配额数据，后续定时同步失败不再上报
         this.hasSuccessfulSync = true;
 
         if (this.updateHandler) {
@@ -483,8 +521,6 @@ export class ReactorCore {
     }
 
     /**
-     * 重新发布最近一次的遥测数据
-     * 用于在配置变更等不需要重新请求 API 的场景下更新 UI
      */
     reprocess(): void {
         if (this.lastRawResponse && this.updateHandler) {
@@ -500,20 +536,17 @@ export class ReactorCore {
             return;
         }
 
-        // 没有可用缓存，触发网络请求获取数据
         logger.warn('Cannot reprocess: no cached data available, triggering sync');
         this.syncTelemetry();
     }
 
     /**
-     * 检查是否有缓存数据
      */
     get hasCache(): boolean {
         return !!this.lastSnapshot;
     }
 
     /**
-     * 获取指定来源缓存的年龄（毫秒）
      */
     getCacheAgeMs(): number | undefined {
         if (!this.lastLocalFetchedAt) {
@@ -523,7 +556,6 @@ export class ReactorCore {
     }
 
     /**
-     * 立即发布指定来源的缓存数据（不触发网络请求）
      */
     publishCachedTelemetry(): boolean {
         if (!this.updateHandler) {
@@ -540,12 +572,9 @@ export class ReactorCore {
     }
 
     /**
-     * 解码服务端响应
      */
     private decodeSignal(data: ServerUserStatusResponse): QuotaSnapshot {
-        // 验证响应数据结构
         if (!data || !data.userStatus) {
-            // 如果服务端返回了错误消息，直接透传给用户，这不属于插件 Bug
             if (data && typeof data.message === 'string') {
                 throw new AntigravityError(t('error.serverError', { message: data.message }));
             }
@@ -618,10 +647,8 @@ export class ReactorCore {
         const configs: ClientModelConfig[] = status.cascadeModelConfigData?.clientModelConfigs || [];
         const modelSorts = status.cascadeModelConfigData?.clientModelSorts || [];
 
-        // 构建排序顺序映射（从 clientModelSorts 获取）
         const sortOrderMap = new Map<string, number>();
         if (modelSorts.length > 0) {
-            // 使用第一个排序配置（通常是 "Recommended"）
             const primarySort = modelSorts[0];
             let index = 0;
             for (const group of primarySort.groups) {
@@ -659,7 +686,6 @@ export class ReactorCore {
                     timeUntilReset: delta,
                     timeUntilResetFormatted: resetTimeValid ? this.formatDelta(delta) : (t('common.unknown') || 'Unknown'),
                     resetTimeValid,
-                    // 模型能力字段
                     supportsImages: m.supportsImages,
                     isRecommended: m.isRecommended,
                     tagTitle: m.tagTitle,
@@ -667,24 +693,19 @@ export class ReactorCore {
                 };
             });
 
-        // 排序：优先使用 clientModelSorts，否则按 label 字母排序
         models.sort((a, b) => {
             const indexA = sortOrderMap.get(a.label);
             const indexB = sortOrderMap.get(b.label);
 
-            // 两个都在排序列表中，按排序列表顺序
             if (indexA !== undefined && indexB !== undefined) {
                 return indexA - indexB;
             }
-            // 只有 a 在排序列表中，a 排前面
             if (indexA !== undefined) {
                 return -1;
             }
-            // 只有 b 在排序列表中，b 排前面
             if (indexB !== undefined) {
                 return 1;
             }
-            // 都不在排序列表中，按 label 字母排序
             return a.label.localeCompare(b.label);
         });
 
@@ -704,18 +725,15 @@ export class ReactorCore {
             const visibleSet = new Set(visibleModels);
             const filteredModels = models.filter(model => visibleSet.has(model.modelId));
             
-            // 安全检查：如果过滤后为空但原始列表不为空，可能是配置问题
             if (filteredModels.length === 0 && models.length > 0) {
                 logger.warn('[buildSnapshot] Visible models filter resulted in empty list. ' +
                     `Original: ${models.length}, Visible config: ${visibleModels.length}. ` +
                     'Showing all recommended models instead.');
-                // 不应用 visibleModels 过滤，但保留推荐模型过滤
             } else {
                 models = filteredModels;
             }
         }
 
-        // 分组逻辑：使用存储的 groupMappings 进行分组
         let groups: QuotaGroup[] | undefined;
         
         if (config.groupingEnabled) {
@@ -724,7 +742,6 @@ export class ReactorCore {
             const hasSavedMappings = Object.keys(savedMappings).length > 0;
             
             if (hasSavedMappings) {
-                // 使用存储的分组映射
                 for (const model of models) {
                     const groupId = savedMappings[model.modelId];
                     if (groupId) {
@@ -733,22 +750,17 @@ export class ReactorCore {
                         }
                         groupMap.get(groupId)!.push(model);
                     } else {
-                        // 新模型，单独一组（使用自己的 modelId 作为 groupId）
                         groupMap.set(model.modelId, [model]);
                     }
                 }
                 
-                // 自动分组检查：检查每个分组内模型的配额是否一致
-                // 如果不一致，只将不一致的模型移出分组（保留用户自定义设置）
                 const modelsToRemove: string[] = [];
                 
                 for (const [groupId, groupModels] of groupMap) {
                     if (groupModels.length <= 1) {
-                        continue; // 单模型组无需检查
+                        continue;
                     }
                     
-                    // 检查组内所有模型的配额签名（remainingFraction + resetTime）是否一致
-                    // 使用多数派原则：找出最常见的配额签名，将不符合的模型移除
                     const signatureCount = new Map<string, { count: number; fraction: number; resetTime: number }>();
                     
                     for (const model of groupModels) {
@@ -762,7 +774,6 @@ export class ReactorCore {
                         signatureCount.get(signature)!.count++;
                     }
                     
-                    // 找出最常见的签名（多数派）
                     let majoritySignature = '';
                     let maxCount = 0;
                     for (const [sig, data] of signatureCount) {
@@ -772,7 +783,6 @@ export class ReactorCore {
                         }
                     }
                     
-                    // 标记不符合多数派的模型移出分组
                     for (const model of groupModels) {
                         const fraction = model.remainingFraction ?? 0;
                         const resetTime = model.resetTime.getTime();
@@ -785,7 +795,6 @@ export class ReactorCore {
                     }
                 }
                 
-                // 更新 groupMappings，移除不一致的模型
                 if (modelsToRemove.length > 0) {
                     const newMappings = { ...savedMappings };
                     for (const modelId of modelsToRemove) {
@@ -796,21 +805,17 @@ export class ReactorCore {
                         logger.warn(`Failed to save updated groupMappings: ${err}`);
                     });
                     
-                    // 从 groupMap 中移除这些模型，并为它们创建独立分组
                     for (const modelId of modelsToRemove) {
-                        // 从原分组中移除
                         for (const [_gid, gModels] of groupMap) {
                             const idx = gModels.findIndex(m => m.modelId === modelId);
                             if (idx !== -1) {
                                 const [removedModel] = gModels.splice(idx, 1);
-                                // 创建独立分组
                                 groupMap.set(modelId, [removedModel]);
                                 break;
                             }
                         }
                     }
                     
-                    // 清理空的分组
                     for (const [gid, gModels] of groupMap) {
                         if (gModels.length === 0) {
                             groupMap.delete(gid);
@@ -820,22 +825,18 @@ export class ReactorCore {
                     logger.info(`[GroupCheck] Removed ${modelsToRemove.length} models from groups due to quota mismatch`);
                 }
             } else {
-                // 没有存储的映射，每个模型单独一组
                 for (const model of models) {
                     groupMap.set(model.modelId, [model]);
                 }
             }
             
-            // 转换为 QuotaGroup 数组
             groups = [];
             let groupIndex = 1;
             
             for (const [groupId, groupModels] of groupMap) {
-                // 锚点共识：查找组内模型的自定义名称
                 let groupName = '';
                 const customNames = config.groupingCustomNames;
                 
-                // 统计每个自定义名称的投票数
                 const nameVotes = new Map<string, number>();
                 for (const model of groupModels) {
                     const customName = customNames[model.modelId];
@@ -844,7 +845,6 @@ export class ReactorCore {
                     }
                 }
                 
-                // 选择投票数最多的名称
                 if (nameVotes.size > 0) {
                     let maxVotes = 0;
                     for (const [name, votes] of nameVotes) {
@@ -855,7 +855,6 @@ export class ReactorCore {
                     }
                 }
                 
-                // 如果没有自定义名称，使用默认名称
                 if (!groupName) {
                     if (groupModels.length === 1) {
                         groupName = groupModels[0].label;
@@ -865,7 +864,6 @@ export class ReactorCore {
                 }
                 
                 const firstModel = groupModels[0];
-                // 计算组内所有模型的平均/最低配额
                 const minPercentage = Math.min(...groupModels.map(m => m.remainingPercentage ?? 0));
                 
                 groups.push({
@@ -882,14 +880,11 @@ export class ReactorCore {
                 groupIndex++;
             }
             
-            // 按组内模型在原始列表中的最小索引排序，保持相对顺序
             const modelIndexMap = new Map<string, number>();
             models.forEach((m, i) => modelIndexMap.set(m.modelId, i));
 
             groups.sort((a, b) => {
-                // 获取 A 组中最靠前的模型索引
                 const minIndexA = Math.min(...a.models.map(m => modelIndexMap.get(m.modelId) ?? 99999));
-                // 获取 B 组中最靠前的模型索引
                 const minIndexB = Math.min(...b.models.map(m => modelIndexMap.get(m.modelId) ?? 99999));
                 return minIndexA - minIndexB;
             });
@@ -909,7 +904,6 @@ export class ReactorCore {
     }
 
     /**
-     * 格式化日期（自动国际化）
      */
     private formatIso(d: Date): string {
         const dateStr = d.toLocaleDateString(undefined, {
@@ -926,10 +920,6 @@ export class ReactorCore {
     }
 
     /**
-     * 格式化时间差
-     * - < 60分钟: 显示 Xm
-     * - < 24小时: 显示 Xh Ym
-     * - >= 24小时: 显示 Xd Yh Zm
      */
     private formatDelta(ms: number): string {
         if (ms <= 0) {
@@ -937,7 +927,6 @@ export class ReactorCore {
         }
         const totalMinutes = Math.ceil(ms / 60000);
         
-        // 小于 60 分钟：只显示分钟
         if (totalMinutes < 60) {
             return `${totalMinutes}m`;
         }
@@ -945,19 +934,16 @@ export class ReactorCore {
         const totalHours = Math.floor(totalMinutes / 60);
         const remainingMinutes = totalMinutes % 60;
         
-        // 小于 24 小时：显示小时和分钟
         if (totalHours < 24) {
             return `${totalHours}h ${remainingMinutes}m`;
         }
         
-        // >= 24 小时：显示天、小时、分钟
         const days = Math.floor(totalHours / 24);
         const remainingHours = totalHours % 24;
         return `${days}d ${remainingHours}h ${remainingMinutes}m`;
     }
 
     /**
-     * 创建离线状态的快照
      */
     static createOfflineSnapshot(errorMessage?: string): QuotaSnapshot {
         return {
@@ -969,11 +955,8 @@ export class ReactorCore {
     }
 
     /**
-     * 根据当前配额信息计算分组映射
-     * 返回 modelId -> groupId 的映射
      */
     static calculateGroupMappings(models: ModelQuotaInfo[]): Record<string, string> {
-        // 1. 尝试按配额状态分组（旧逻辑）
         const statsMap = new Map<string, string[]>();
         for (const model of models) {
             const fingerprint = `${model.remainingFraction?.toFixed(6)}_${model.resetTime.getTime()}`;
@@ -983,14 +966,11 @@ export class ReactorCore {
             statsMap.get(fingerprint)!.push(model.modelId);
         }
 
-        // 2. 检查是否所有模型都被分到了同一个大组
-        // 这通常发生在所有模型都是满血状态（或状态完全一致）时，此时按状态分组没有意义
         if (statsMap.size === 1 && models.length > 1) {
             logger.info('Auto-grouping detected degenerate state (all models identical), falling back to ID-based fallback grouping.');
             return this.groupBasedOnSeries(models);
         }
         
-        // 3. 正常情况：使用配额指纹生成映射
         const mappings: Record<string, string> = {};
         for (const [, modelIds] of statsMap) {
             const stableGroupId = modelIds.sort().join('_');
@@ -1003,12 +983,10 @@ export class ReactorCore {
     }
 
     /**
-     * 基于模型ID的硬编码兜底分组逻辑
      */
     private static groupBasedOnSeries(models: ModelQuotaInfo[]): Record<string, string> {
         const seriesMap = new Map<string, string[]>();
 
-        // 定义硬编码的分组规则
         const GROUPS = {
             GEMINI: ['MODEL_PLACEHOLDER_M8', 'MODEL_PLACEHOLDER_M7'],
             GEMINI_FLASH: ['MODEL_PLACEHOLDER_M18'],
@@ -1049,6 +1027,5 @@ export class ReactorCore {
     }
 }
 
-// 保持向后兼容
 export type quota_snapshot = QuotaSnapshot;
 export type model_quota_info = ModelQuotaInfo;

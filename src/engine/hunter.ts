@@ -1,6 +1,4 @@
 /**
- * Antigravity Cockpit - 进程猎手
- * 自动检测 Antigravity 进程并提取连接信息
  */
 
 import { exec } from 'child_process';
@@ -15,8 +13,6 @@ import { TIMING, PROCESS_NAMES, API_ENDPOINTS } from '../shared/constants';
 const execAsync = promisify(exec);
 
 /**
- * 进程猎手类
- * 负责扫描系统进程，找到 Antigravity Language Server
  */
 export class ProcessHunter {
     private strategy: PlatformStrategy;
@@ -52,38 +48,31 @@ export class ProcessHunter {
     }
 
     /**
-     * 扫描环境，查找 Antigravity 进程
-     * @param maxAttempts 最大尝试次数（默认 3 次）
      */
     async scanEnvironment(maxAttempts: number = 3): Promise<EnvironmentScanResult | null> {
         logger.info(`Scanning environment, max attempts: ${maxAttempts}`);
 
-        // 第一阶段：按进程名查找
         const resultByName = await this.scanByProcessName(maxAttempts);
         if (resultByName) {
             return resultByName;
         }
 
-        // 关键字扫描已在加固模式下禁用
         logger.info('Process name search failed; keyword scan disabled in hardened mode');
-        // 所有方法都失败了，执行诊断（仅输出基础提示）
         await this.runDiagnostics();
 
         return null;
     }
 
     /**
-     * 获取最近一次扫描诊断信息
      */
     getLastDiagnostics(): ScanDiagnostics {
         return { ...this.lastDiagnostics };
     }
 
     /**
-     * 按进程名扫描
      */
     private async scanByProcessName(maxAttempts: number): Promise<EnvironmentScanResult | null> {
-        let powershellTimeoutRetried = false; // 追踪 PowerShell 超时是否已重试过
+        let powershellTimeoutRetried = false;
         this.lastDiagnostics = {
             scan_method: 'process_name',
             target_process: this.targetProcess,
@@ -102,12 +91,10 @@ export class ProcessHunter {
                     timeout: TIMING.PROCESS_CMD_TIMEOUT_MS,
                 });
 
-                // 记录 stderr 以便调试
                 if (stderr && stderr.trim()) {
                     logger.warn(`Command stderr: ${stderr.substring(0, 500)}`);
                 }
 
-                // 检查 stdout 是否为空或仅包含空白
                 if (!stdout || !stdout.trim()) {
                     logger.debug('Command returned empty output, process may not be running');
                     continue;
@@ -119,7 +106,6 @@ export class ProcessHunter {
                     logger.info(`Found ${candidates.length} candidate process(es)`);
                     this.lastDiagnostics.found_candidates = candidates.length;
                     
-                    // 遍历所有候选进程尝试连接
                     for (const info of candidates) {
                         logger.info(`🔍 Checking Process: PID=${info.pid}, ExtPort=${info.extensionPort}`);
                         const result = await this.verifyAndConnect(info);
@@ -133,38 +119,29 @@ export class ProcessHunter {
                 const error = e instanceof Error ? e : new Error(String(e));
                 const errorMsg = error.message.toLowerCase();
                 
-                // 构建详细的错误信息
                 const detailMsg = `Attempt ${i + 1} failed: ${error.message}`;
                 logger.error(detailMsg);
 
-                // Windows 特定处理
                 if (process.platform === 'win32' && this.strategy instanceof WindowsStrategy) {
                     
-                    // 检测 PowerShell 执行策略问题
                     if (errorMsg.includes('cannot be loaded because running scripts is disabled') ||
-                        errorMsg.includes('executionpolicy') ||
-                        errorMsg.includes('禁止运行脚本')) {
+                        errorMsg.includes('executionpolicy')) {
                         logger.error('⚠️ PowerShell execution policy may be blocking scripts. Try running: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned');
                     }
                     
-                    // 检测 WMI 服务问题（仍保留提示，因为 Get-CimInstance 依赖 WMI 服务）
                     if (errorMsg.includes('rpc server') || 
                         errorMsg.includes('wmi') ||
-                        errorMsg.includes('invalid class') ||
-                        errorMsg.includes('无效类')) {
+                        errorMsg.includes('invalid class')) {
                         logger.error('⚠️ WMI service may not be running. Try: net start winmgmt');
                     }
 
-                    // PowerShell 超时特殊处理：首次超时不消耗重试次数
                     if (!powershellTimeoutRetried &&
                         (errorMsg.includes('timeout') ||
-                         errorMsg.includes('timed out') ||
-                         errorMsg.includes('超时'))) {
+                         errorMsg.includes('timed out'))) {
                         logger.warn('PowerShell command timed out (likely cold start), retrying with longer wait...');
                         powershellTimeoutRetried = true;
-                        // 不消耗重试次数，给 PowerShell 更多预热时间后重试
                         i--;
-                        await new Promise(r => setTimeout(r, 3000)); // 增加到 3 秒让 PowerShell 预热
+                        await new Promise(r => setTimeout(r, 3000));
                         continue;
                     }
                 }
@@ -179,10 +156,8 @@ export class ProcessHunter {
     }
 
     /**
-     * 按关键字扫描（查找包含 csrf_token 的进程）
      */
     private async scanByKeyword(): Promise<EnvironmentScanResult | null> {
-        // 仅 Windows 支持按关键字查找
         if (process.platform !== 'win32' || !(this.strategy instanceof WindowsStrategy)) {
             return null;
         }
@@ -195,7 +170,6 @@ export class ProcessHunter {
         };
 
         const winStrategy = this.strategy as WindowsStrategy;
-        // 注意：WindowsStrategy 现已纯化为仅使用 PowerShell，无需检查 isUsingPowershell
 
         try {
             const cmd = winStrategy.getProcessByKeywordCommand();
@@ -232,7 +206,6 @@ export class ProcessHunter {
     }
 
     /**
-     * 验证并建立连接
      */
     private async verifyAndConnect(info: ProcessInfo): Promise<EnvironmentScanResult | null> {
         if (info.extensionPort > 0) {
@@ -249,7 +222,35 @@ export class ProcessHunter {
                     csrfToken: info.csrfToken,
                 };
             }
-            return null;
+            logger.warn(`⚠️ Ping failed for ${preferredPort}; probing process ports`);
+            const ports = await this.identifyPorts(info.pid);
+            logger.debug(`Listening Ports: ${ports.join(', ')}`);
+            this.lastDiagnostics.ports = ports.length > 0 ? ports : [preferredPort];
+            if (ports.length > 0) {
+                const validPort = await this.verifyConnection(ports, info.csrfToken);
+                this.lastDiagnostics.verified_port = validPort ?? null;
+                this.lastDiagnostics.verification_success = Boolean(validPort);
+                if (validPort) {
+                    logger.info(`✅ Connection Logic Verified: ${validPort}`);
+                    return {
+                        extensionPort: info.extensionPort,
+                        connectPort: validPort,
+                        csrfToken: info.csrfToken,
+                    };
+                }
+                logger.warn('⚠️ No port verified; falling back to first detected port');
+                return {
+                    extensionPort: info.extensionPort,
+                    connectPort: ports[0],
+                    csrfToken: info.csrfToken,
+                };
+            }
+            logger.warn(`⚠️ No listening ports found; continuing with unverified connection`);
+            return {
+                extensionPort: info.extensionPort,
+                connectPort: preferredPort,
+                csrfToken: info.csrfToken,
+            };
         }
 
         const ports = await this.identifyPorts(info.pid);
@@ -269,13 +270,18 @@ export class ProcessHunter {
                     csrfToken: info.csrfToken,
                 };
             }
+            logger.warn('⚠️ No port verified; falling back to first detected port');
+            return {
+                extensionPort: info.extensionPort,
+                connectPort: ports[0],
+                csrfToken: info.csrfToken,
+            };
         }
 
         return null;
     }
 
     /**
-     * 运行诊断命令，列出所有相关进程
      */
     private async runDiagnostics(): Promise<void> {
         logger.warn('⚠️ All scan attempts failed; diagnostics disabled in hardened mode.');
@@ -290,11 +296,9 @@ export class ProcessHunter {
     }
 
     /**
-     * 识别进程监听的端口
      */
     private async identifyPorts(pid: number): Promise<number[]> {
         try {
-            // 确保端口检测命令可用（Unix 平台）
             if (this.strategy instanceof UnixStrategy) {
                 await this.strategy.ensurePortCommandAvailable();
             }
@@ -310,7 +314,6 @@ export class ProcessHunter {
     }
 
     /**
-     * 验证端口连接
      */
     private async verifyConnection(ports: number[], token: string): Promise<number | null> {
         for (const port of ports) {
@@ -322,43 +325,62 @@ export class ProcessHunter {
     }
 
     /**
-     * 测试端口是否可用
      */
     private pingPort(port: number, token: string): Promise<boolean> {
-        return new Promise(resolve => {
+        const payload = JSON.stringify({
+            metadata: {
+                ideName: 'antigravity',
+                extensionName: 'antigravity',
+                locale: 'en',
+            },
+        });
+
+        const attempt = (path: string): Promise<boolean> => new Promise(resolve => {
             const options: https.RequestOptions = {
                 hostname: '127.0.0.1',
                 port,
-                path: API_ENDPOINTS.GET_UNLEASH_DATA,
+                path,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
                     'X-Codeium-Csrf-Token': token,
                     'Connect-Protocol-Version': '1',
                 },
                 rejectUnauthorized: false,
                 timeout: TIMING.PROCESS_CMD_TIMEOUT_MS,
-                agent: false, // 绕过代理，直接连接 localhost
+                agent: false,
             };
 
-            const req = https.request(options, res => resolve(res.statusCode === 200));
+            const req = https.request(options, res => {
+                if (res.statusCode === 404) {
+                    resolve(false);
+                    return;
+                }
+                const ok = res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 401 || res.statusCode === 403;
+                resolve(ok);
+            });
             req.on('error', () => resolve(false));
             req.on('timeout', () => {
                 req.destroy();
                 resolve(false);
             });
-            req.write(JSON.stringify({ wrapper_data: {} }));
+            req.write(payload);
             req.end();
+        });
+
+        const paths = [API_ENDPOINTS.GET_USER_STATUS, API_ENDPOINTS.GET_USER_STATUS_SEAT];
+        return attempt(paths[0]).then(ok => {
+            if (ok) return true;
+            return attempt(paths[1]);
         });
     }
 
     /**
-     * 获取错误信息
      */
     getErrorMessages(): { processNotFound: string; commandNotAvailable: string; requirements: string[] } {
         return this.strategy.getErrorMessages();
     }
 }
 
-// 保持向后兼容
 export type environment_scan_result = EnvironmentScanResult;
