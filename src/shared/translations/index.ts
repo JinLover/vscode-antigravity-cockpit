@@ -1,5 +1,4 @@
 /**
- * 翻译文件索引
  * Translations index file
  */
 

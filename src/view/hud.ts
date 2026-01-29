@@ -1,6 +1,4 @@
 /**
- * Antigravity Cockpit - HUD 视图
- * 负责创建和管理 Webview Dashboard
  */
 
 import * as vscode from 'vscode';
@@ -12,8 +10,6 @@ import { configService } from '../shared/config_service';
 import { i18n, t, localeDisplayNames } from '../shared/i18n';
 
 /**
- * CockpitHUD 类
- * 管理 Webview 面板的创建、更新和销毁
  */
 export class CockpitHUD {
     public static readonly viewType = 'antigravity.cockpit';
@@ -33,30 +29,24 @@ export class CockpitHUD {
     }
 
     /**
-     * 注册 Webview Panel Serializer
-     * 用于在插件重载后恢复 panel 引用
      */
     public registerSerializer(): vscode.Disposable {
         return vscode.window.registerWebviewPanelSerializer(CockpitHUD.viewType, {
             deserializeWebviewPanel: async (webviewPanel: vscode.WebviewPanel, _state: unknown) => {
                 logger.info('[CockpitHUD] Restoring webview panel after reload');
                 
-                // 如果已经有一个 panel，关闭旧的
                 if (this.panel) {
                     logger.info('[CockpitHUD] Disposing old panel before restoration');
                     this.panel.dispose();
                 }
                 
-                // 恢复引用
                 this.panel = webviewPanel;
 
-                // 重新设置 webview 内容和事件监听
                 webviewPanel.webview.options = {
                     enableScripts: true,
                     localResourceRoots: [this.extensionUri],
                 };
 
-                // 重新同步语言（确保跟随 VS Code 语言时生效）
                 i18n.applyLanguageSetting(configService.getConfig().language);
                 webviewPanel.webview.html = this.generateHtml(webviewPanel.webview);
                 
@@ -70,7 +60,6 @@ export class CockpitHUD {
                     }
                 });
                 
-                // 恢复后刷新数据
                 if (this.cachedTelemetry) {
                     await this.refreshWithCachedData();
                 }
@@ -79,22 +68,17 @@ export class CockpitHUD {
     }
 
     /**
-     * 显示 HUD 面板
-     * @param initialTab 可选的初始标签页 (如 'auto-trigger')
-     * @returns 是否成功打开
      */
     public async revealHud(initialTab?: string): Promise<boolean> {
         const localeChanged = i18n.applyLanguageSetting(configService.getConfig().language);
         const column = vscode.window.activeTextEditor?.viewColumn;
 
-        // 如果已经有 panel，直接显示
         if (this.panel) {
             if (localeChanged) {
                 this.panel.webview.html = this.generateHtml(this.panel.webview);
             }
             this.panel.reveal(column);
             await this.refreshWithCachedData();
-            // 如果指定了初始标签页，发送消息切换
             if (initialTab) {
                 setTimeout(() => {
                     this.panel?.webview.postMessage({ type: 'switchTab', tab: initialTab });
@@ -103,8 +87,6 @@ export class CockpitHUD {
             return true;
         }
 
-        // 在创建新 panel 之前，先关闭所有旧版本的同类型 webview tabs
-        // 这解决了插件升级后出现多个 panel 的问题（旧版本没有 serializer）
         await this.closeOrphanTabs();
 
         try {
@@ -137,7 +119,6 @@ export class CockpitHUD {
                 await this.refreshWithCachedData();
             }
 
-            // 如果指定了初始标签页，延迟发送消息切换
             if (initialTab) {
                 setTimeout(() => {
                     panel.webview.postMessage({ type: 'switchTab', tab: initialTab });
@@ -153,8 +134,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 关闭所有孤儿 webview tabs（旧版本遗留的 panel）
-     * 使用 tabGroups API 遍历所有打开的 tabs
      */
     private async closeOrphanTabs(): Promise<void> {
         try {
@@ -162,10 +141,8 @@ export class CockpitHUD {
             
             for (const tabGroup of vscode.window.tabGroups.all) {
                 for (const tab of tabGroup.tabs) {
-                    // 检查是否是 webview tab
                     if (tab.input instanceof vscode.TabInputWebview) {
                         const tabViewType = tab.input.viewType;
-                        // viewType 可能带有 extension id 前缀，使用 includes 匹配
                         if (tabViewType === CockpitHUD.viewType || 
                             tabViewType.includes(CockpitHUD.viewType) ||
                             tabViewType.endsWith(CockpitHUD.viewType)) {
@@ -180,12 +157,11 @@ export class CockpitHUD {
                 await vscode.window.tabGroups.close(tabsToClose);
             }
         } catch (error) {
-            // tabGroups API 可能在某些环境不可用，静默忽略
+            logger.debug(`[CockpitHUD] Failed to close orphan tabs: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
     /**
-     * 使用缓存数据刷新视图
      */
     private async refreshWithCachedData(): Promise<void> {
         if (!this.cachedTelemetry) {
@@ -218,21 +194,18 @@ export class CockpitHUD {
     }
 
     /**
-     * 从缓存恢复数据
      */
     public async rehydrate(): Promise<void> {
         await this.refreshWithCachedData();
     }
 
     /**
-     * 注册消息处理器
      */
     public onSignal(handler: (message: WebviewMessage) => void): void {
         this.messageRouter = handler;
     }
 
     /**
-     * 向 Webview 发送消息
      */
     public sendMessage(message: object): void {
         if (this.panel) {
@@ -241,14 +214,12 @@ export class CockpitHUD {
     }
 
     /**
-     * 检查 Webview 面板是否可见（用户当前正在查看）
      */
     public isVisible(): boolean {
         return this.panel?.visible === true;
     }
 
     /**
-     * 刷新视图
      */
     public refreshView(snapshot: QuotaSnapshot, config: DashboardConfig): void {
         this.cachedTelemetry = snapshot;
@@ -259,7 +230,6 @@ export class CockpitHUD {
                 this.panel.webview.html = this.generateHtml(this.panel.webview);
             }
 
-            // 转换数据为 Webview 兼容格式
             const webviewData = this.convertToWebviewFormat(snapshot);
 
             this.panel.webview.postMessage({
@@ -271,7 +241,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 转换数据格式（驼峰转下划线，兼容 Webview JS）
      */
     private convertToWebviewFormat(snapshot: QuotaSnapshot): object {
         return {
@@ -329,7 +298,6 @@ export class CockpitHUD {
                 isExhausted: m.isExhausted,
                 timeUntilResetFormatted: m.timeUntilResetFormatted,
                 resetTimeDisplay: m.resetTimeDisplay,
-                // 模型能力字段
                 supportsImages: m.supportsImages,
                 isRecommended: m.isRecommended,
                 tagTitle: m.tagTitle,
@@ -357,20 +325,17 @@ export class CockpitHUD {
                 models: g.models.map(m => ({
                     label: m.label,
                     modelId: m.modelId,
-                    // 模型能力字段
                     supportsImages: m.supportsImages,
                     isRecommended: m.isRecommended,
                     tagTitle: m.tagTitle,
                     supportedMimeTypes: m.supportedMimeTypes,
                 })),
             })),
-            // 本地账户邮箱（local 模式下使用远端 API 时）
             localAccountEmail: snapshot.localAccountEmail,
         };
     }
 
     /**
-     * 销毁面板
      */
     public dispose(): void {
         if (this.panel) {
@@ -380,7 +345,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 获取 Webview 资源 URI
      */
     private getWebviewUri(webview: vscode.Webview, ...pathSegments: string[]): vscode.Uri {
         return webview.asWebviewUri(
@@ -389,7 +353,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 读取外部资源文件内容
      */
     private readResourceFile(...pathSegments: string[]): string {
         try {
@@ -402,15 +365,12 @@ export class CockpitHUD {
     }
 
     /**
-     * 生成 HTML 内容
      */
     private generateHtml(webview: vscode.Webview): string {
-        // 获取外部资源 URI
         const styleUri = this.getWebviewUri(webview, 'out', 'view', 'webview', 'dashboard.css');
         const sharedModalStyleUri = this.getWebviewUri(webview, 'out', 'view', 'webview', 'shared_modals.css');
         const scriptUri = this.getWebviewUri(webview, 'out', 'view', 'webview', 'dashboard.js');
 
-        // 获取国际化文本
         const translations = i18n.getAllTranslations();
         const translationsJson = JSON.stringify(translations);
 
@@ -446,7 +406,7 @@ export class CockpitHUD {
             <button id="toggle-grouping-btn" class="refresh-btn" title="${t('grouping.toggleHint')}">
                 ${t('grouping.title')}
             </button>
-            <!-- 计划按钮已隐藏 -->
+            <!-- Plan button hidden -->
             <button id="toggle-profile-btn" class="refresh-btn hidden" title="${t('profile.togglePlan')}">
                 ${t('profile.planDetails')}
             </button>
@@ -576,7 +536,7 @@ export class CockpitHUD {
                 <button id="close-settings-btn" class="close-btn">×</button>
             </div>
             <div class="modal-body">
-                <!-- 语言设置 -->
+                <!-- Language settings -->
                 <div class="setting-item">
                     <label for="language-select">🌐 ${t('language.title') || 'Language'}</label>
                     <select id="language-select" class="setting-select">
@@ -590,7 +550,7 @@ export class CockpitHUD {
 
                 <!-- Display Mode and View Mode moved to bottom -->
 
-                <!-- 状态栏样式选择 -->
+                <!-- Status bar style selection -->
                 <div class="setting-item">
                     <label for="statusbar-format">📊 ${i18n.t('statusBarFormat.title')}</label>
                     <select id="statusbar-format" class="setting-select">
@@ -633,7 +593,7 @@ export class CockpitHUD {
 
                 <hr class="setting-divider">
 
-                <!-- 显示模式切换 -->
+                <!-- Display mode toggle -->
                 <div class="setting-item">
                     <label for="display-mode-select">🖥️ ${t('displayMode.title') || 'Display Mode'}</label>
                     <select id="display-mode-select" class="setting-select">
@@ -712,7 +672,6 @@ export class CockpitHUD {
     <div id="toast" class="toast hidden"></div>
 
     <script nonce="${nonce}">
-        // 注入国际化文本
         window.__i18n = ${translationsJson};
     </script>
     <script nonce="${nonce}" src="${scriptUri}"></script>
@@ -721,7 +680,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 生成随机 nonce
      */
     private generateNonce(): string {
         const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -733,7 +691,6 @@ export class CockpitHUD {
     }
 
     /**
-     * 生成语言选项 HTML
      */
     private generateLanguageOptions(): string {
         const locales = i18n.getSupportedLocales();
@@ -744,5 +701,4 @@ export class CockpitHUD {
     }
 }
 
-// 保持向后兼容的导出别名
 export { CockpitHUD as hud };

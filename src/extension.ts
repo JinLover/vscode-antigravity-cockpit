@@ -1,6 +1,4 @@
 /**
- * Antigravity Cockpit - 扩展入口
- * VS Code 扩展的主入口点
  */
 
 import * as vscode from 'vscode';
@@ -18,7 +16,6 @@ import { CommandController } from './controller/command_controller';
 import { MessageController } from './controller/message_controller';
 import { TelemetryController } from './controller/telemetry_controller';
 
-// 全局模块实例
 let hunter: ProcessHunter;
 let reactor: ReactorCore;
 let hud: CockpitHUD;
@@ -32,105 +29,85 @@ let _telemetryController: TelemetryController;
 
 let systemOnline = false;
 
-// 自动重试计数器
 let autoRetryCount = 0;
 const MAX_AUTO_RETRY = 3;
 const AUTO_RETRY_DELAY_MS = 5000;
 
 /**
- * 扩展激活入口
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    // 初始化日志
     logger.init();
     await configService.initialize(context);
 
-    // 应用保存的语言设置
     const savedLanguage = configService.getConfig().language;
     if (savedLanguage) {
         i18n.applyLanguageSetting(savedLanguage);
     }
 
-    // 启动时同步：读取共享配置文件，与本地配置比较时间戳后合并
     try {
         const { mergeSettingOnStartup } = await import('./services/syncSettings');
         const mergedLanguage = mergeSettingOnStartup('language', savedLanguage || 'auto');
         if (mergedLanguage) {
-            logger.info(`[SyncSettings] 启动时合并语言设置: ${savedLanguage} -> ${mergedLanguage}`);
+            logger.info(`[SyncSettings] Merged language on startup: ${savedLanguage} -> ${mergedLanguage}`);
             await configService.updateConfig('language', mergedLanguage);
             i18n.applyLanguageSetting(mergedLanguage);
         }
     } catch (err) {
-        logger.debug(`[SyncSettings] 启动时同步失败: ${err instanceof Error ? err.message : String(err)}`);
+        logger.debug(`[SyncSettings] Startup sync failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // 获取插件版本号
     const packageJson = await import('../package.json');
     const version = packageJson.version || 'unknown';
 
     logger.info(`Antigravity Cockpit v${version} - Systems Online`);
 
-    // 初始化核心模块
     hunter = new ProcessHunter();
     reactor = new ReactorCore();
     hud = new CockpitHUD(context.extensionUri, context);
     quickPickView = new QuickPickView();
 
-    // 注册 Webview Panel Serializer，确保插件重载后能恢复 panel 引用
     context.subscriptions.push(hud.registerSerializer());
 
-    // 设置 QuickPick 刷新回调
     quickPickView.onRefresh(() => {
         reactor.syncTelemetry();
     });
 
-    // 初始化状态栏控制器
     statusBar = new StatusBarController(context);
 
-    // 定义重试/启动回调
     const onRetry = async () => {
         systemOnline = false;
         await bootSystems();
     };
 
-    // 初始化其他控制器
     _telemetryController = new TelemetryController(reactor, statusBar, hud, quickPickView, onRetry);
     _messageController = new MessageController(context, hud, reactor, onRetry);
     _commandController = new CommandController(context, hud, quickPickView, reactor, onRetry);
 
-    // 监听配置变化
     context.subscriptions.push(
         configService.onConfigChange(handleConfigChange),
     );
 
-    // 启动系统
     await bootSystems();
 
     logger.info('Antigravity Cockpit Fully Operational');
 }
 
 /**
- * 处理配置变化
  */
 async function handleConfigChange(config: CockpitConfig): Promise<void> {
     logger.debug('Configuration changed', config);
 
-    // 仅当刷新间隔变化时重启 Reactor
     const newInterval = configService.getRefreshIntervalMs();
 
-    // 如果 Reactor 已经在运行且间隔没有变化，则忽略
     if (systemOnline && reactor.currentInterval !== newInterval) {
         logger.info(`Refresh interval changed from ${reactor.currentInterval}ms to ${newInterval}ms. Restarting Reactor.`);
         reactor.startReactor(newInterval);
     }
 
-    // 对于任何配置变更，立即重新处理最近的数据以更新 UI（如状态栏格式变化）
-    // 这确保存储在 lastSnapshot 中的数据使用新配置重新呈现
     reactor.reprocess();
 }
 
 /**
- * 启动系统
  */
 async function bootSystems(): Promise<void> {
     if (systemOnline) {
@@ -146,11 +123,10 @@ async function bootSystems(): Promise<void> {
             reactor.engage(info.connectPort, info.csrfToken, hunter.getLastDiagnostics());
             reactor.startReactor(configService.getRefreshIntervalMs());
             systemOnline = true;
-            autoRetryCount = 0; // 重置计数器
+            autoRetryCount = 0;
             statusBar.setReady();
             logger.info('System boot successful');
         } else {
-            // 自动重试机制
             if (autoRetryCount < MAX_AUTO_RETRY) {
                 autoRetryCount++;
                 logger.info(`Auto-retry ${autoRetryCount}/${MAX_AUTO_RETRY} in ${AUTO_RETRY_DELAY_MS / 1000}s...`);
@@ -160,7 +136,7 @@ async function bootSystems(): Promise<void> {
                     bootSystems();
                 }, AUTO_RETRY_DELAY_MS);
             } else {
-                autoRetryCount = 0; // 重置计数器
+                autoRetryCount = 0;
                 handleOfflineState();
             }
         }
@@ -168,7 +144,6 @@ async function bootSystems(): Promise<void> {
         const error = e instanceof Error ? e : new Error(String(e));
         logger.error('Boot Error', error);
 
-        // 自动重试机制（异常情况也自动重试）
         if (autoRetryCount < MAX_AUTO_RETRY) {
             autoRetryCount++;
             logger.info(`Auto-retry ${autoRetryCount}/${MAX_AUTO_RETRY} after error in ${AUTO_RETRY_DELAY_MS / 1000}s...`);
@@ -178,10 +153,9 @@ async function bootSystems(): Promise<void> {
                 bootSystems();
             }, AUTO_RETRY_DELAY_MS);
         } else {
-            autoRetryCount = 0; // 重置计数器
+            autoRetryCount = 0;
             statusBar.setError(error.message);
 
-            // 显示系统弹框
             vscode.window.showErrorMessage(
                 `${t('notify.bootFailed')}: ${error.message}`,
                 t('help.retry'),
@@ -198,12 +172,10 @@ async function bootSystems(): Promise<void> {
 }
 
 /**
- * 处理离线状态
  */
 function handleOfflineState(): void {
     statusBar.setOffline();
 
-    // 显示带操作按钮的消息
     vscode.window.showErrorMessage(
         t('notify.offline'),
         t('help.retry'),
@@ -216,7 +188,6 @@ function handleOfflineState(): void {
         }
     });
 
-    // 更新 Dashboard 显示离线状态
     hud.refreshView(ReactorCore.createOfflineSnapshot(t('notify.offline')), {
         showPromptCredits: false,
         pinnedModels: [],
@@ -233,7 +204,6 @@ function handleOfflineState(): void {
 }
 
 /**
- * 扩展停用
  */
 export async function deactivate(): Promise<void> {
     logger.info('Antigravity Cockpit: Shutting down...');

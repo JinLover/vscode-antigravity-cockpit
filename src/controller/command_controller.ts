@@ -20,23 +20,18 @@ export class CommandController {
     }
 
     private registerCommands(): void {
-        // 打开 Dashboard 或账号总览（根据用户上次选择的视图）
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.open', async (options?: { tab?: string; forceView?: 'dashboard' | 'accountsOverview' }) => {
                 const config = configService.getConfig();
                 
-                // 检查用户上次选择的视图状态
                 const lastActiveView = configService.getStateValue<string>('lastActiveView', 'dashboard');
-                const targetView = options?.forceView || lastActiveView;
                 const targetTab = options?.tab ?? 'quota';
 
-                // 打开 Dashboard
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
                     this.quickPickView.show();
                 } else {
                     const success = await this.hud.revealHud(targetTab);
                     if (!success) {
-                        // Webview 创建失败，引导用户切换到 QuickPick 模式
                         const selection = await vscode.window.showWarningMessage(
                             t('webview.failedPrompt'),
                             t('webview.switchToQuickPick'),
@@ -53,7 +48,6 @@ export class CommandController {
             }),
         );
 
-        // 手动刷新
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.refresh', () => {
                 this.reactor.syncTelemetry();
@@ -61,21 +55,18 @@ export class CommandController {
             }),
         );
 
-        // 显示日志
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.showLogs', () => {
                 logger.show();
             }),
         );
 
-        // 重试连接
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.retry', async () => {
                 await this.onRetry();
             }),
         );
 
-        // 设置警告阈值
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.setWarningThreshold', async () => {
                 const config = configService.getConfig();
@@ -103,7 +94,6 @@ export class CommandController {
             }),
         );
 
-        // 设置危险阈值
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.setCriticalThreshold', async () => {
                 const config = configService.getConfig();

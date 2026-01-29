@@ -6,7 +6,6 @@ async function build() {
     const isWatch = process.argv.includes('--watch');
     const isProduction = process.argv.includes('--production');
 
-    // 读取 Sentry DSN（从环境变量或 .env.local 文件）
     let sentryDsn = process.env.SENTRY_DSN || '';
     const envLocalPath = path.join(__dirname, '../.env.local');
     if (!sentryDsn && fs.existsSync(envLocalPath)) {

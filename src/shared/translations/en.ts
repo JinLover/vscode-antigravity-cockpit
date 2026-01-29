@@ -2,7 +2,6 @@
  * English translations
  */
 export const en = {
-    // 状态栏
     'statusBar.init': 'Quota Monitor: Init...',
     'statusBar.connecting': 'Quota Monitor: Connecting...',
     'statusBar.ready': 'Quota Monitor: Ready',
@@ -78,7 +77,6 @@ export const en = {
     'history.allCleared': 'All history cleared.',
     'history.clearing': 'Clearing...',
 
-    // 通知
     'notify.refreshing': 'Refreshing quota data...',
     'notify.refreshed': 'Quota data refreshed',
     'notify.exhausted': '{model} quota exhausted! Resets in {time}',
@@ -86,7 +84,6 @@ export const en = {
     'notify.offline': 'Quota Monitor: Systems offline. Could not detect Antigravity process.',
     'notify.bootFailed': 'Quota Monitor: Boot failed',
 
-    // 帮助
     'help.startAntigravity': 'Start Antigravity',
     'help.retry': 'Retry Connection',
     'help.openLogs': 'Open Logs',

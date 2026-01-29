@@ -332,7 +332,7 @@ export class CloudCodeClient {
                         try {
                             lastData = JSON.parse(payload) as T;
                         } catch {
-                            // JSON 解析失败时保留原始文本
+                            // ignore malformed event payloads
                         }
                     }
                 }
@@ -346,7 +346,7 @@ export class CloudCodeClient {
                 try {
                     reader.releaseLock();
                 } catch {
-                    // ignore
+                    // ignore release errors
                 }
             }
 
