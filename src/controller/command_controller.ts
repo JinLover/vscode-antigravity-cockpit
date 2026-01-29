@@ -24,7 +24,6 @@ export class CommandController {
             vscode.commands.registerCommand('agCockpit.open', async (options?: { tab?: string; forceView?: 'dashboard' | 'accountsOverview' }) => {
                 const config = configService.getConfig();
                 
-                const lastActiveView = configService.getStateValue<string>('lastActiveView', 'dashboard');
                 const targetTab = options?.tab ?? 'quota';
 
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
