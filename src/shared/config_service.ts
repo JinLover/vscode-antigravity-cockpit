@@ -43,8 +43,6 @@ export interface CockpitConfig {
     warningThreshold: number;
     /** 危险阈值 (%) */
     criticalThreshold: number;
-    /** 配额来源 */
-    quotaSource: string;
     /** 显示模式 */
     displayMode: string;
     /** 是否隐藏计划详情面板 */
@@ -70,7 +68,6 @@ class ConfigService {
         'pinnedGroups',
         'groupingCustomNames',
         'visibleModels',
-        'quotaSource',  // 使用 globalState 存储，避免 VS Code 配置 API 写入失败问题
         'language',     // 语言设置使用 globalState 存储
     ]);
     private static readonly stateKeyPrefix = 'state';
@@ -102,11 +99,6 @@ class ConfigService {
     getConfig(): CockpitConfig {
         const config = vscode.workspace.getConfiguration(this.configSection);
         
-        // quotaSource 使用 globalState 存储
-        // 注意：不再回退到 config.get，只在迁移阶段读取一次旧配置，之后完全由 globalState 决定
-        // 默认值设为 'local'
-        const quotaSourceResolved = this.getConfigStateValue<string>(CONFIG_KEYS.QUOTA_SOURCE, 'local');
-        
         return {
             refreshInterval: config.get<number>(CONFIG_KEYS.REFRESH_INTERVAL, TIMING.DEFAULT_REFRESH_INTERVAL_MS / 1000),
             showPromptCredits: config.get<boolean>(CONFIG_KEYS.SHOW_PROMPT_CREDITS, false),
@@ -125,7 +117,6 @@ class ConfigService {
             groupMappings: this.getConfigStateValue(CONFIG_KEYS.GROUP_MAPPINGS, {}),
             warningThreshold: config.get<number>(CONFIG_KEYS.WARNING_THRESHOLD, QUOTA_THRESHOLDS.WARNING_DEFAULT),
             criticalThreshold: config.get<number>(CONFIG_KEYS.CRITICAL_THRESHOLD, QUOTA_THRESHOLDS.CRITICAL_DEFAULT),
-            quotaSource: quotaSourceResolved,
             displayMode: config.get<string>(CONFIG_KEYS.DISPLAY_MODE, DISPLAY_MODE.WEBVIEW),
             profileHidden: config.get<boolean>(CONFIG_KEYS.PROFILE_HIDDEN, true),
             dataMasked: config.get<boolean>(CONFIG_KEYS.DATA_MASKED, false),
@@ -188,17 +179,11 @@ class ConfigService {
             const stateKey = this.buildStateKey(configKey);
             const stored = this.globalState.get<T>(stateKey);
             if (stored !== undefined) {
-                if (configKey === CONFIG_KEYS.QUOTA_SOURCE) {
-                    logger.debug(`[ConfigService] getStateValue: ${configKey} = ${JSON.stringify(stored)} (from globalState)`);
-                }
                 return stored;
             }
         }
         const config = vscode.workspace.getConfiguration(this.configSection);
         const fallback = config.get<T>(configKey as keyof CockpitConfig, fallbackValue);
-        if (configKey === CONFIG_KEYS.QUOTA_SOURCE) {
-            logger.debug(`[ConfigService] getStateValue: ${configKey} = ${JSON.stringify(fallback)} (from config fallback)`);
-        }
         return fallback;
     }
 
@@ -442,7 +427,6 @@ class ConfigService {
             { key: 'pinnedGroups', configKey: CONFIG_KEYS.PINNED_GROUPS, defaultValue: [] },
             { key: 'groupingCustomNames', configKey: CONFIG_KEYS.GROUPING_CUSTOM_NAMES, defaultValue: {} },
             { key: 'visibleModels', configKey: CONFIG_KEYS.VISIBLE_MODELS, defaultValue: [] },
-            { key: 'quotaSource', configKey: CONFIG_KEYS.QUOTA_SOURCE, defaultValue: 'local' },
         ];
 
         let migrated = false;
@@ -478,11 +462,9 @@ class ConfigService {
             CONFIG_KEYS.PINNED_GROUPS,
             CONFIG_KEYS.GROUPING_CUSTOM_NAMES,
             CONFIG_KEYS.VISIBLE_MODELS,
-            CONFIG_KEYS.QUOTA_SOURCE,
             'viewMode',
             'dashboardViewMode',
             'cardStyle',
-            'announcementCacheTTL',
         ];
 
         for (const key of keysToClear) {

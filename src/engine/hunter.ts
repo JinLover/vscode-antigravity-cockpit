@@ -64,14 +64,9 @@ export class ProcessHunter {
             return resultByName;
         }
 
-        // 第二阶段：按关键字查找（备用方案）
-        logger.info('Process name search failed, trying keyword search (csrf_token)...');
-        const resultByKeyword = await this.scanByKeyword();
-        if (resultByKeyword) {
-            return resultByKeyword;
-        }
-
-        // 所有方法都失败了，执行诊断
+        // 关键字扫描已在加固模式下禁用
+        logger.info('Process name search failed; keyword scan disabled in hardened mode');
+        // 所有方法都失败了，执行诊断（仅输出基础提示）
         await this.runDiagnostics();
 
         return null;
@@ -240,6 +235,23 @@ export class ProcessHunter {
      * 验证并建立连接
      */
     private async verifyAndConnect(info: ProcessInfo): Promise<EnvironmentScanResult | null> {
+        if (info.extensionPort > 0) {
+            const preferredPort = info.extensionPort;
+            this.lastDiagnostics.ports = [preferredPort];
+            const ok = await this.pingPort(preferredPort, info.csrfToken);
+            this.lastDiagnostics.verified_port = ok ? preferredPort : null;
+            this.lastDiagnostics.verification_success = ok;
+            if (ok) {
+                logger.info(`✅ Connection Logic Verified: ${preferredPort}`);
+                return {
+                    extensionPort: info.extensionPort,
+                    connectPort: preferredPort,
+                    csrfToken: info.csrfToken,
+                };
+            }
+            return null;
+        }
+
         const ports = await this.identifyPorts(info.pid);
         logger.debug(`Listening Ports: ${ports.join(', ')}`);
         this.lastDiagnostics.ports = ports;
@@ -266,50 +278,14 @@ export class ProcessHunter {
      * 运行诊断命令，列出所有相关进程
      */
     private async runDiagnostics(): Promise<void> {
-        logger.warn('⚠️ All scan attempts failed, running diagnostics...');
+        logger.warn('⚠️ All scan attempts failed; diagnostics disabled in hardened mode.');
         logger.info(`Target process name: ${this.targetProcess}`);
         logger.info(`Platform: ${process.platform}, Arch: ${process.arch}`);
-        
-        // Windows 特定诊断
+
         if (process.platform === 'win32') {
-            logger.info('📋 Windows Troubleshooting Tips:');
-            logger.info('  1. Ensure Antigravity/Windsurf is running');
-            logger.info('  2. Check if language_server_windows_x64.exe is in Task Manager');
-            logger.info('  3. Try restarting Antigravity/VS Code');
-            logger.info('  4. If PowerShell errors occur, try: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned');
-            logger.info('  5. If WMI errors occur, try: net start winmgmt (run as admin)');
-        }
-        
-        try {
-            const diagCmd = this.strategy.getDiagnosticCommand();
-            logger.debug(`Diagnostic command: ${diagCmd}`);
-            
-            const { stdout, stderr } = await execAsync(diagCmd, { timeout: 10000 });
-            
-            // 脱敏处理：隐藏 csrf_token，防止在日志中泄露敏感信息
-            const sanitize = (text: string) => text.replace(/(--csrf_token[=\s]+)([a-f0-9-]+)/gi, '$1***REDACTED***');
-            if (stdout && stdout.trim()) {
-                logger.info(`📋 Related processes found:\n${sanitize(stdout).substring(0, 2000)}`);
-            } else {
-                logger.warn('❌ No related processes found (language_server/antigravity)');
-                logger.info('💡 This usually means Antigravity is not running or the process name has changed.');
-            }
-            
-            if (stderr && stderr.trim()) {
-                logger.warn(`Diagnostic stderr: ${sanitize(stderr).substring(0, 500)}`);
-            }
-        } catch (e) {
-            const error = e instanceof Error ? e : new Error(String(e));
-            logger.error(`Diagnostic command failed: ${error.message}`);
-            
-            // 为用户提供进一步的诊断建议
-            if (process.platform === 'win32') {
-                logger.info('💡 Try running this command manually in PowerShell to debug:');
-                logger.info('   Get-Process | Where-Object { $_.ProcessName -match "language|antigravity" }');
-            } else {
-                logger.info('💡 Try running this command manually in Terminal to debug:');
-                logger.info('   ps aux | grep -E "language|antigravity"');
-            }
+            logger.info('Tips: ensure Antigravity is running, check Task Manager for language_server_windows_x64.exe.');
+        } else {
+            logger.info('Tips: ensure Antigravity is running and the language_server process is alive.');
         }
     }
 

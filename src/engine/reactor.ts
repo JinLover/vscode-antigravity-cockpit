@@ -18,61 +18,8 @@ import { logger } from '../shared/log_service';
 import { configService } from '../shared/config_service';
 import { t } from '../shared/i18n';
 import { TIMING, API_ENDPOINTS } from '../shared/constants';
-import { captureError } from '../shared/error_reporter';
 import { AntigravityError, isServerError } from '../shared/errors';
-import { cloudCodeClient, CloudCodeAuthError, CloudCodeRequestError } from '../shared/cloudcode_client';
-import { autoTriggerController } from '../auto_trigger/controller';
-import { oauthService, credentialStorage, ensureLocalCredentialImported } from '../auto_trigger';
-import { antigravityToolsSyncService } from '../antigravityTools_sync';
 import { readQuotaCache, writeQuotaCache, QuotaCacheModel, QuotaCacheRecord, QuotaCacheSource } from '../services/quota_cache';
-import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../shared/recommended_models';
-
-const AUTH_RECOMMENDED_LABEL_RANK = new Map(
-    AUTH_RECOMMENDED_LABELS.map((label, index) => [label, index]),
-);
-
-const AUTH_RECOMMENDED_ID_RANK = new Map(
-    AUTH_RECOMMENDED_MODEL_IDS.map((id, index) => [id, index]),
-);
-
-const normalizeRecommendedKey = (value: string): string =>
-    value.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const AUTH_RECOMMENDED_LABEL_KEY_RANK = new Map(
-    AUTH_RECOMMENDED_LABELS.map((label, index) => [normalizeRecommendedKey(label), index]),
-);
-
-const AUTH_RECOMMENDED_ID_KEY_RANK = new Map(
-    AUTH_RECOMMENDED_MODEL_IDS.map((id, index) => [normalizeRecommendedKey(id), index]),
-);
-
-
-interface AuthorizedQuotaInfo {
-    remainingFraction?: number;
-    resetTime?: string;
-}
-
-interface AuthorizedModelInfo {
-    displayName?: string;
-    model?: string;
-    quotaInfo?: AuthorizedQuotaInfo;
-    // 模型能力字段
-    supportsImages?: boolean;
-    supportsVideo?: boolean;
-    supportsThinking?: boolean;
-    thinkingBudget?: number;
-    minThinkingBudget?: number;
-    maxTokens?: number;
-    maxOutputTokens?: number;
-    recommended?: boolean;
-    tagTitle?: string;
-    supportedMimeTypes?: Record<string, boolean>;
-    isInternal?: boolean;
-}
-
-interface AuthorizedQuotaResponse {
-    models?: Record<string, AuthorizedModelInfo>;
-}
 
 
 /**
@@ -91,24 +38,14 @@ export class ReactorCore {
     
     /** 上一次的配额快照缓存 */
     private lastSnapshot?: QuotaSnapshot;
-    /** 上一次快照的来源 */
-    private lastSnapshotSource?: 'local' | 'authorized';
     /** 上一次的原始 API 响应缓存（用于 reprocess 时重新生成分组） */
     private lastRawResponse?: ServerUserStatusResponse;
-    /** 上一次的授权配额模型缓存（用于 reprocess 时重新生成分组） */
-    private lastAuthorizedModels?: ModelQuotaInfo[];
     /** 本地配额上次拉取时间 */
     private lastLocalFetchedAt?: number;
-    /** 授权配额上次拉取时间 */
-    private lastAuthorizedFetchedAt?: number;
     /** 是否已经成功获取过配额数据（用于决定是否上报后续错误） */
     private hasSuccessfulSync: boolean = false;
     /** 初始化同步重试标识，用于中断本地重试流程 */
     private initRetryToken: number = 0;
-    /** 本地模式下的账户邮箱（从 state.vscdb 读取） */
-    private localAccountEmail?: string;
-    /** 本地模式是否使用远端 API */
-    private localUsingRemoteApi: boolean = false;
     /** 当前用户在 Antigravity 中选中的模型 ID */
     private activeModelId?: string;
 
@@ -242,53 +179,9 @@ export class ReactorCore {
         if (models.length === 0) {
             return false;
         }
-        if (source === 'authorized') {
-            this.lastAuthorizedModels = models;
-        }
         const telemetry = this.buildSnapshot(models);
-        if (source === 'local') {
-            telemetry.localAccountEmail = email;
-        }
         this.publishTelemetry(telemetry, source);
         return true;
-    }
-
-    /**
-     * 获取指定账号的配额快照
-     * 复用现有的解析、过滤、分组逻辑，确保与 Dashboard 一致
-     * @param email 账号邮箱
-     * @returns 配额快照
-     */
-    async fetchQuotaForAccount(email: string): Promise<QuotaSnapshot> {
-        logger.info(`[ReactorCore] Fetching quota for account: ${email}`);
-
-        try {
-            // 获取该账号的 token
-            const tokenStatus = await oauthService.getAccessTokenStatusForAccount(email);
-            if (tokenStatus.state === 'invalid_grant') {
-                throw new CloudCodeAuthError(`Account ${email}: Authorization expired`);
-            }
-            if (tokenStatus.state !== 'ok' || !tokenStatus.token) {
-                throw new Error(`Account ${email}: Token unavailable (${tokenStatus.state})`);
-            }
-
-            // 获取 projectId
-            const credential = await credentialStorage.getCredentialForAccount(email);
-            const projectId = credential?.projectId;
-
-            // 获取配额模型（复用现有方法）
-            const models = await this.fetchAuthorizedQuotaModels(tokenStatus.token, projectId);
-
-            // 构建快照（复用现有分组/过滤逻辑）
-            const snapshot = this.buildSnapshot(models);
-            
-            logger.info(`[ReactorCore] Quota for ${email}: ${models.length} models, ${snapshot.groups?.length ?? 0} groups`);
-            return snapshot;
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            logger.error(`[ReactorCore] Failed to fetch quota for ${email}:`, error.message);
-            throw error;
-        }
     }
 
     /**
@@ -416,9 +309,7 @@ export class ReactorCore {
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             const source = this.getSyncErrorSource(err);
-            const endpoint = source === 'authorized'
-                ? 'v1internal:fetchAvailableModels'
-                : API_ENDPOINTS.GET_USER_STATUS;
+            const endpoint = API_ENDPOINTS.GET_USER_STATUS;
             if (this.shouldIgnoreSyncError(err)) {
                 logger.info(`[ReactorCore] Ignoring ${this.getSyncErrorSource(err)} init error after source switch: ${err.message}`);
                 return;
@@ -446,18 +337,7 @@ export class ReactorCore {
             
             // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
             if (!isServerError(err)) {
-                captureError(err, {
-                    phase: 'initSync',
-                    retryCount: currentRetry,
-                    maxRetries,
-                    endpoint: API_ENDPOINTS.GET_USER_STATUS,
-                    host: '127.0.0.1',
-                    port: this.port,
-                    timeout_ms: TIMING.HTTP_TIMEOUT_MS,
-                    interval_ms: this.currentInterval,
-                    has_token: Boolean(this.token),
-                    scan: this.lastScanDiagnostics,
-                });
+                logger.warn(`[Init] Initial sync failed: ${err.message}`);
             }
             if (this.errorHandler) {
                 this.errorHandler(err);
@@ -472,7 +352,7 @@ export class ReactorCore {
         this.initRetryToken += 1;
     }
 
-    private wrapSyncError(error: unknown, source: 'local' | 'authorized'): Error {
+    private wrapSyncError(error: unknown, source: 'local'): Error {
         const err = error instanceof Error ? error : new Error(String(error));
         (err as Error & { source?: string }).source = source;
         return err;
@@ -484,11 +364,7 @@ export class ReactorCore {
 
     private shouldIgnoreSyncError(error: Error): boolean {
         const source = this.getSyncErrorSource(error);
-        if (!source) {
-            return false;
-        }
-        const currentSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
-        return source !== currentSource;
+        return Boolean(source && source !== 'local');
     }
 
     /**
@@ -521,26 +397,13 @@ export class ReactorCore {
                 return;
             }
             const source = this.getSyncErrorSource(err);
-            const currentSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
-            const sourceInfo = source ? `source=${source}` : 'source=unknown';
-            const endpoint = source === 'authorized'
-                ? 'v1internal:fetchAvailableModels'
-                : API_ENDPOINTS.GET_USER_STATUS;
-            logger.error(`Telemetry Sync Failed (${sourceInfo}, current=${currentSource}, endpoint=${endpoint}): ${err.message}`);
+            const sourceInfo = source ? `source=${source}` : 'source=local';
+            logger.error(`Telemetry Sync Failed (${sourceInfo}, endpoint=${API_ENDPOINTS.GET_USER_STATUS}): ${err.message}`);
             
             // 只有在从未成功获取过配额时才上报，成功后的定时同步失败不上报
             // 服务端返回的错误不上报（如"未登录"），这不属于插件 Bug
             if (!this.hasSuccessfulSync && !isServerError(err)) {
-                captureError(err, {
-                    phase: 'telemetrySync',
-                    endpoint: API_ENDPOINTS.GET_USER_STATUS,
-                    host: '127.0.0.1',
-                    port: this.port,
-                    timeout_ms: TIMING.HTTP_TIMEOUT_MS,
-                    interval_ms: this.currentInterval,
-                    has_token: Boolean(this.token),
-                    scan: this.lastScanDiagnostics,
-                });
+                logger.warn(`[Telemetry] Initial sync failed: ${err.message}`);
             }
             if (this.errorHandler) {
                 this.errorHandler(err);
@@ -552,113 +415,15 @@ export class ReactorCore {
      * 同步遥测数据核心逻辑（可抛出异常，用于重试机制）
      */
     private async syncTelemetryCore(): Promise<void> {
-        const config = configService.getConfig();
-        if (config.quotaSource === 'authorized') {
-            // 注意：移除了每次配额刷新时的自动账户切换逻辑
-            // 用户可以通过"切换至当前登录账户"按钮手动触发切换
-            // 这样可以避免用户手动切换账户后被自动覆盖回去的问题
-
-            try {
-                const hasAuth = await credentialStorage.hasValidCredential();
-                if (!hasAuth) {
-                    this.lastAuthorizedModels = undefined;
-                    this.lastAuthorizedFetchedAt = undefined;
-                    const telemetry = ReactorCore.createOfflineSnapshot();
-                    this.publishTelemetry(telemetry, 'authorized');
-                    return;
-                }
-                const telemetry = await this.fetchAuthorizedTelemetry();
-                this.lastAuthorizedFetchedAt = Date.now();
-                const activeEmail = await credentialStorage.getActiveAccount();
-                await this.persistQuotaCache('authorized', activeEmail, telemetry);
-                this.publishTelemetry(telemetry, 'authorized');
-                return;
-            } catch (error) {
-                if (error instanceof CloudCodeAuthError) {
-                    logger.warn(`[AuthorizedQuota] Authorization invalid: ${error.message}`);
-                    try {
-                        await credentialStorage.deleteCredential();
-                    } catch (deleteError) {
-                        const err = deleteError instanceof Error ? deleteError : new Error(String(deleteError));
-                        logger.warn(`[AuthorizedQuota] Failed to clear credential: ${err.message}`);
-                    }
-                    const telemetry = ReactorCore.createOfflineSnapshot();
-                    this.publishTelemetry(telemetry, 'authorized');
-                    return;
-                }
-
-                if (error instanceof CloudCodeRequestError && error.status === 403) {
-                    logger.warn('[AuthorizedQuota] Access forbidden (403), stopping authorized sync');
-                    const telemetry = ReactorCore.createOfflineSnapshot();
-                    this.publishTelemetry(telemetry, 'authorized');
-                    return;
-                }
-
-                if (error instanceof CloudCodeRequestError && error.retryable) {
-                    if (this.lastAuthorizedModels) {
-                        const cacheAge = this.getCacheAgeMs('authorized');
-                        const ageNote = cacheAge !== undefined ? ` (age=${Math.round(cacheAge / 1000)}s)` : '';
-                        logger.warn(`[AuthorizedQuota] Request failed, using cached models${ageNote}`);
-                        const telemetry = this.buildSnapshot(this.lastAuthorizedModels);
-                        this.publishTelemetry(telemetry, 'authorized');
-                        return;
-                    }
-                    const telemetry = ReactorCore.createOfflineSnapshot();
-                    this.publishTelemetry(telemetry, 'authorized');
-                    return;
-                }
-
-                throw this.wrapSyncError(error, 'authorized');
-            }
-        }
-
-        // Local 模式：优先尝试 state.vscdb 账户 + 远端 API，失败则兜底本地进程
         try {
-            const telemetry = await this.fetchLocalTelemetryWithRemoteFallback();
-            const rawEmail = telemetry.localAccountEmail
-                || telemetry.userInfo?.email
-                || this.localAccountEmail
-                || null;
+            const telemetry = await this.fetchLocalTelemetry();
+            const rawEmail = telemetry.userInfo?.email || null;
             const cacheEmail = rawEmail && rawEmail.includes('@') ? rawEmail : null;
             await this.persistQuotaCache('local', cacheEmail, telemetry);
             this.publishTelemetry(telemetry, 'local');
         } catch (error) {
             throw this.wrapSyncError(error, 'local');
         }
-    }
-
-    /**
-     * 获取本地配额数据，优先使用远端 API（自动导入 state.vscdb 账户）
-     * 如果远端 API 失败，兜底到本地进程 API
-     */
-    private async fetchLocalTelemetryWithRemoteFallback(): Promise<QuotaSnapshot> {
-        // 第一优先级：确保本地账户已导入，然后使用远端 API
-        try {
-            const importResult = await ensureLocalCredentialImported();
-            if (importResult) {
-                logger.info(`[LocalQuota] Using remote API with account: ${importResult.email}`);
-                
-                // 复用授权模式的逻辑获取配额
-                const telemetry = await this.fetchAuthorizedTelemetry();
-                
-                this.localAccountEmail = importResult.email;
-                this.localUsingRemoteApi = true;
-                this.lastLocalFetchedAt = Date.now();
-                
-                // 添加本地账户信息到快照
-                telemetry.localAccountEmail = importResult.email;
-                return telemetry;
-            }
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            logger.warn(`[LocalQuota] Remote API failed, falling back to local process: ${err.message}`);
-        }
-
-        // 第二优先级：兜底到本地进程 API
-        logger.info('[LocalQuota] Using local process API');
-        this.localUsingRemoteApi = false;
-        this.localAccountEmail = undefined;
-        return await this.fetchLocalTelemetry();
     }
 
     private async fetchLocalTelemetry(): Promise<QuotaSnapshot> {
@@ -690,60 +455,12 @@ export class ReactorCore {
         }
     }
 
-    private async resolveToolsAuthorizedEmail(): Promise<string | null> {
-        try {
-            const detection = await antigravityToolsSyncService.detect();
-            if (!detection?.currentEmail) {
-                return null;
-            }
-            return await this.resolveAuthorizedEmail(detection.currentEmail);
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            logger.debug(`[AuthorizedQuota] Tools detection failed: ${err.message}`);
-            return null;
-        }
-    }
-
-    private async resolveAuthorizedEmail(localEmail: string): Promise<string | null> {
-        const trimmed = localEmail.trim();
-        if (!trimmed || trimmed === 'N/A' || !trimmed.includes('@')) {
-            return null;
-        }
-        const accounts = await credentialStorage.getAllCredentials();
-        const target = trimmed.toLowerCase();
-        for (const email of Object.keys(accounts)) {
-            if (email.toLowerCase() === target) {
-                return email;
-            }
-        }
-        return null;
-    }
-
-    private async ensureActiveAccount(email: string): Promise<void> {
-        const activeAccount = await credentialStorage.getActiveAccount();
-        if (activeAccount && activeAccount.toLowerCase() === email.toLowerCase()) {
-            return;
-        }
-        await credentialStorage.setActiveAccount(email);
-        logger.info(`[AuthorizedQuota] Auto-switched active account to ${email}`);
-    }
-
     /**
      * 发布遥测数据到 UI
      */
-    private publishTelemetry(telemetry: QuotaSnapshot, source?: 'local' | 'authorized'): void {
-        if (source) {
-            const currentSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
-            if (source !== currentSource) {
-                logger.debug(`[ReactorCore] Skipping ${source} telemetry (current source: ${currentSource})`);
-                return;
-            }
-        }
+    private publishTelemetry(telemetry: QuotaSnapshot, _source?: 'local'): void {
         telemetry.activeModelId = this.activeModelId;
         this.lastSnapshot = telemetry; // Cache the latest snapshot
-        if (source) {
-            this.lastSnapshotSource = source;
-        }
 
         if (telemetry.models.length > 0) {
             const maxLabelLen = Math.max(...telemetry.models.map(m => m.label.length));
@@ -763,155 +480,6 @@ export class ReactorCore {
         if (this.updateHandler) {
             this.updateHandler(telemetry);
         }
-        
-        // 检查配额重置并触发自动唤醒（异步执行，不阻塞主流程）
-        // 注意：现在 checkQuotaResetTrigger 会自行获取每个选中账号的配额数据
-        this.checkQuotaResetTrigger().catch(err => {
-            logger.warn(`[ReactorCore] Wake on reset check failed: ${err}`);
-        });
-    }
-
-    /**
-     * 获取授权配额并构建快照
-     * @param retryCount 当前重试次数，用于防止账号切换时的无限递归
-     */
-    private async fetchAuthorizedTelemetry(retryCount = 0): Promise<QuotaSnapshot> {
-        // 防止账号频繁切换导致的无限递归
-        const MAX_ACCOUNT_CHANGE_RETRIES = 3;
-        if (retryCount >= MAX_ACCOUNT_CHANGE_RETRIES) {
-            logger.warn('[AuthorizedQuota] Max account change retries reached, returning empty snapshot');
-            return ReactorCore.createOfflineSnapshot();
-        }
-        const tokenResult = await oauthService.getAccessTokenStatus();
-        if (tokenResult.state === 'invalid_grant') {
-            throw new CloudCodeAuthError('Authorization expired');
-        }
-        if (tokenResult.state === 'refresh_failed') {
-            throw new CloudCodeRequestError('Token refresh failed', undefined, true);
-        }
-        if (tokenResult.state !== 'ok' || !tokenResult.token) {
-            throw new Error(t('quotaSource.authorizedMissing') || 'Authorize auto wake-up first');
-        }
-        const accessToken = tokenResult.token;
-        const activeAccount = await credentialStorage.getActiveAccount();
-
-        let projectId: string | undefined;
-        const credential = await credentialStorage.getCredential();
-        if (credential?.projectId) {
-            projectId = credential.projectId;
-        } else {
-            try {
-                const info = await cloudCodeClient.resolveProjectId(accessToken, { logLabel: 'AuthorizedQuota' });
-                if (info.projectId) {
-                    projectId = info.projectId;
-                    if (credential) {
-                        credential.projectId = projectId;
-                        await credentialStorage.saveCredential(credential);
-                    }
-                }
-            } catch (error) {
-                if (error instanceof CloudCodeAuthError) {
-                    throw error;
-                }
-                const err = error instanceof Error ? error : new Error(String(error));
-                logger.warn(`[AuthorizedQuota] loadCodeAssist failed, continuing without project: ${err.message}`);
-            }
-        }
-
-        const models = await this.fetchAuthorizedQuotaModels(accessToken, projectId);
-        const activeAccountAfter = await credentialStorage.getActiveAccount();
-        if (this.normalizeAccount(activeAccount) !== this.normalizeAccount(activeAccountAfter)) {
-            logger.info('[AuthorizedQuota] Active account changed during fetch, retrying with new account');
-            this.lastAuthorizedModels = undefined;
-            // 递归重试，获取新账号的配额
-            return this.fetchAuthorizedTelemetry(retryCount + 1);
-        }
-        this.lastAuthorizedModels = models;
-        await this.ensureAuthorizedVisibleModels(models);
-        return this.buildSnapshot(models);
-    }
-
-    private normalizeAccount(value: string | null | undefined): string | null {
-        if (!value) {
-            return null;
-        }
-        const normalized = value.trim().toLowerCase();
-        return normalized ? normalized : null;
-    }
-
-    private async fetchAuthorizedQuotaModels(accessToken: string, projectId?: string): Promise<ModelQuotaInfo[]> {
-        logger.info('[AuthorizedQuota] Fetching available models');
-        const data = await cloudCodeClient.fetchAvailableModels(
-            accessToken,
-            projectId,
-            { logLabel: 'AuthorizedQuota' },
-        ) as AuthorizedQuotaResponse;
-        const models: ModelQuotaInfo[] = [];
-        const now = Date.now();
-
-        if (!data.models) {
-            return models;
-        }
-
-        for (const [modelKey, info] of Object.entries(data.models)) {
-            const quotaInfo = info.quotaInfo;
-            if (!quotaInfo) {
-                continue;
-            }
-
-            const remainingFraction = Math.min(1, Math.max(0, quotaInfo.remainingFraction ?? 0));
-            
-            // 解析 resetTime，处理无效值的情况
-            let resetTime: Date;
-            let resetTimeValid = true;
-            if (quotaInfo.resetTime) {
-                const parsed = new Date(quotaInfo.resetTime);
-                if (!Number.isNaN(parsed.getTime())) {
-                    resetTime = parsed;
-                } else {
-                    // 无效的 resetTime 字符串，使用 24 小时后作为备用
-                    resetTime = new Date(now + 24 * 60 * 60 * 1000);
-                    resetTimeValid = false;
-                    logger.warn(`[AuthorizedQuota] Invalid resetTime for model ${modelKey}: ${quotaInfo.resetTime}`);
-                }
-            } else {
-                // 没有 resetTime，使用 24 小时后作为备用
-                resetTime = new Date(now + 24 * 60 * 60 * 1000);
-                resetTimeValid = false;
-            }
-            
-            const timeUntilReset = Math.max(0, resetTime.getTime() - now);
-            const modelId = info.model || modelKey;
-            const label = info.displayName || modelKey;
-
-            models.push({
-                label,
-                modelId,
-                remainingFraction,
-                remainingPercentage: remainingFraction * 100,
-                isExhausted: remainingFraction <= 0,
-                resetTime,
-                resetTimeDisplay: resetTimeValid ? this.formatIso(resetTime) : (t('common.unknown') || 'Unknown'),
-                timeUntilReset,
-                timeUntilResetFormatted: resetTimeValid ? this.formatDelta(timeUntilReset) : (t('common.unknown') || 'Unknown'),
-                resetTimeValid,
-                // 模型能力字段
-                supportsImages: info.supportsImages,
-                isRecommended: info.recommended,
-                tagTitle: info.tagTitle,
-                supportedMimeTypes: info.supportedMimeTypes,
-            });
-        }
-
-        models.sort((a, b) => a.label.localeCompare(b.label));
-        return models;
-    }
-    /**
-     * 检查配额重置并触发自动唤醒
-     * 现在 AutoTriggerController 会自行遍历所有选中账号并获取配额
-     */
-    private async checkQuotaResetTrigger(): Promise<void> {
-        await autoTriggerController.checkAndTriggerOnQuotaReset();
     }
 
     /**
@@ -919,22 +487,14 @@ export class ReactorCore {
      * 用于在配置变更等不需要重新请求 API 的场景下更新 UI
      */
     reprocess(): void {
-        const quotaSource = configService.getConfig().quotaSource === 'authorized' ? 'authorized' : 'local';
-        if (quotaSource === 'local' && this.lastRawResponse && this.updateHandler) {
+        if (this.lastRawResponse && this.updateHandler) {
             logger.info('Reprocessing cached local telemetry data with latest config');
             const telemetry = this.decodeSignal(this.lastRawResponse);
             this.publishTelemetry(telemetry, 'local');
             return;
         }
 
-        if (quotaSource === 'authorized' && this.lastAuthorizedModels && this.updateHandler) {
-            logger.info('Reprocessing cached authorized telemetry data with latest config');
-            const telemetry = this.buildSnapshot(this.lastAuthorizedModels);
-            this.publishTelemetry(telemetry, 'authorized');
-            return;
-        }
-
-        if (this.lastSnapshot && this.lastSnapshotSource === quotaSource && this.updateHandler) {
+        if (this.lastSnapshot && this.updateHandler) {
             logger.info('Reprocessing cached snapshot (no raw response)');
             this.updateHandler(this.lastSnapshot);
             return;
@@ -955,36 +515,24 @@ export class ReactorCore {
     /**
      * 获取指定来源缓存的年龄（毫秒）
      */
-    getCacheAgeMs(source: 'local' | 'authorized'): number | undefined {
-        const lastFetchedAt = source === 'local' ? this.lastLocalFetchedAt : this.lastAuthorizedFetchedAt;
-        if (!lastFetchedAt) {
+    getCacheAgeMs(): number | undefined {
+        if (!this.lastLocalFetchedAt) {
             return undefined;
         }
-        return Date.now() - lastFetchedAt;
+        return Date.now() - this.lastLocalFetchedAt;
     }
 
     /**
      * 立即发布指定来源的缓存数据（不触发网络请求）
      */
-    publishCachedTelemetry(source: 'local' | 'authorized'): boolean {
+    publishCachedTelemetry(): boolean {
         if (!this.updateHandler) {
             return false;
         }
 
-        if (source === 'local' && this.lastRawResponse) {
+        if (this.lastRawResponse) {
             const telemetry = this.decodeSignal(this.lastRawResponse);
             this.publishTelemetry(telemetry, 'local');
-            return true;
-        }
-
-        if (source === 'authorized' && this.lastAuthorizedModels) {
-            const telemetry = this.buildSnapshot(this.lastAuthorizedModels);
-            this.publishTelemetry(telemetry, 'authorized');
-            return true;
-        }
-
-        if (this.lastSnapshot && this.lastSnapshotSource === source) {
-            this.updateHandler(this.lastSnapshot);
             return true;
         }
 
@@ -1150,9 +698,6 @@ export class ReactorCore {
     ): QuotaSnapshot {
         const config = configService.getConfig();
         const allModels = [...models];
-
-        // 首先过滤只保留推荐模型
-        models = models.filter(model => this.getAuthorizedRecommendedRank(model) < Number.MAX_SAFE_INTEGER);
 
         const visibleModels = config.visibleModels ?? [];
         if (visibleModels.length > 0) {
@@ -1352,10 +897,6 @@ export class ReactorCore {
             logger.debug(`Grouping enabled: ${groups.length} groups created (saved mappings: ${hasSavedMappings})`);
         }
 
-        // 将配额中的模型常量传递给 AutoTriggerController，用于过滤可触发模型
-        const quotaModelConstants = models.map(m => m.modelId);
-        autoTriggerController.setQuotaModels(quotaModelConstants);
-
         return {
             timestamp: new Date(),
             promptCredits,
@@ -1365,63 +906,6 @@ export class ReactorCore {
             groups,
             isConnected: true,
         };
-    }
-
-    private getAuthorizedRecommendedIds(models: ModelQuotaInfo[]): string[] {
-        return models
-            .filter(model => this.getAuthorizedRecommendedRank(model) < Number.MAX_SAFE_INTEGER)
-            .sort((a, b) => {
-                const aRank = this.getAuthorizedRecommendedRank(a);
-                const bRank = this.getAuthorizedRecommendedRank(b);
-                if (aRank !== bRank) {
-                    return aRank - bRank;
-                }
-                return a.label.localeCompare(b.label);
-            })
-            .map(model => model.modelId);
-    }
-
-    private getAuthorizedRecommendedRank(model: ModelQuotaInfo): number {
-        const idRank = AUTH_RECOMMENDED_ID_RANK.get(model.modelId);
-        if (idRank !== undefined) {
-            return idRank;
-        }
-        const labelRank = AUTH_RECOMMENDED_LABEL_RANK.get(model.label);
-        if (labelRank !== undefined) {
-            return labelRank;
-        }
-        const normalizedId = normalizeRecommendedKey(model.modelId);
-        const normalizedLabel = normalizeRecommendedKey(model.label);
-        return Math.min(
-            AUTH_RECOMMENDED_ID_KEY_RANK.get(normalizedId) ?? Number.MAX_SAFE_INTEGER,
-            AUTH_RECOMMENDED_LABEL_KEY_RANK.get(normalizedLabel) ?? Number.MAX_SAFE_INTEGER,
-        );
-    }
-
-    private async ensureAuthorizedVisibleModels(models: ModelQuotaInfo[]): Promise<void> {
-        const config = configService.getConfig();
-        if (config.quotaSource !== 'authorized') {
-            return;
-        }
-
-        const initialized = configService.getStateFlag('visibleModelsInitializedAuthorized', false);
-        if (config.visibleModels.length > 0) {
-            if (!initialized) {
-                await configService.setStateFlag('visibleModelsInitializedAuthorized', true);
-            }
-            return;
-        }
-
-        if (initialized || models.length === 0) {
-            return;
-        }
-
-        const recommendedIds = this.getAuthorizedRecommendedIds(models);
-        const defaultVisible = recommendedIds.length > 0
-            ? recommendedIds
-            : models.map(model => model.modelId);
-        await configService.updateVisibleModels(defaultVisible);
-        await configService.setStateFlag('visibleModelsInitializedAuthorized', true);
     }
 
     /**

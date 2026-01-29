@@ -3,12 +3,10 @@ import * as vscode from 'vscode';
 import { CockpitHUD } from '../view/hud';
 import { QuickPickView } from '../view/quickpick_view';
 import { ReactorCore } from '../engine/reactor';
-import { triggerService } from '../auto_trigger/trigger_service';
 import { configService } from '../shared/config_service';
 import { logger } from '../shared/log_service';
 import { t } from '../shared/i18n';
-import { DISPLAY_MODE, FEEDBACK_URL } from '../shared/constants';
-import { announcementService } from '../announcement';
+import { DISPLAY_MODE } from '../shared/constants';
 
 export class CommandController {
     constructor(
@@ -30,28 +28,7 @@ export class CommandController {
                 // 检查用户上次选择的视图状态
                 const lastActiveView = configService.getStateValue<string>('lastActiveView', 'dashboard');
                 const targetView = options?.forceView || lastActiveView;
-                
-                const targetTab = options?.tab ?? (targetView === 'accountsOverview' ? 'accounts' : 'quota');
-
-                // 账号总览统一切到 HUD 的 Accounts Tab（不再打开独立 Webview）
-                if (targetView === 'accountsOverview') {
-                    logger.info('[CommandController] Opening Accounts tab (last active view)');
-                    const success = await this.hud.revealHud(targetTab);
-                    if (!success) {
-                        const selection = await vscode.window.showWarningMessage(
-                            t('webview.failedPrompt'),
-                            t('webview.switchToQuickPick'),
-                            t('webview.cancel'),
-                        );
-                        if (selection === t('webview.switchToQuickPick')) {
-                            await configService.updateConfig('displayMode', DISPLAY_MODE.QUICKPICK);
-                            vscode.window.showInformationMessage(t('webview.switchedToQuickPick'));
-                            this.reactor.reprocess();
-                            this.quickPickView.show();
-                        }
-                    }
-                    return;
-                }
+                const targetTab = options?.tab ?? 'quota';
 
                 // 打开 Dashboard
                 if (config.displayMode === DISPLAY_MODE.QUICKPICK) {
@@ -84,19 +61,6 @@ export class CommandController {
             }),
         );
 
-        // 强制刷新模型缓存
-        this.context.subscriptions.push(
-            vscode.commands.registerCommand('agCockpit.refreshModelCache', async () => {
-                try {
-                    const models = await triggerService.refreshAvailableModelsCache();
-                    vscode.window.showInformationMessage(`Model list cache refreshed (${models.length}).`);
-                } catch (error) {
-                    const err = error instanceof Error ? error : new Error(String(error));
-                    vscode.window.showErrorMessage(`Failed to refresh model list cache: ${err.message}`);
-                }
-            }),
-        );
-
         // 显示日志
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.showLogs', () => {
@@ -108,13 +72,6 @@ export class CommandController {
         this.context.subscriptions.push(
             vscode.commands.registerCommand('agCockpit.retry', async () => {
                 await this.onRetry();
-            }),
-        );
-
-        // 打开反馈页面
-        this.context.subscriptions.push(
-            vscode.commands.registerCommand('agCockpit.openFeedback', () => {
-                vscode.env.openExternal(vscode.Uri.parse(FEEDBACK_URL));
             }),
         );
 
@@ -173,26 +130,5 @@ export class CommandController {
                 }
             }),
         );
-
-        // 强制刷新公告
-        this.context.subscriptions.push(
-            vscode.commands.registerCommand('agCockpit.refreshAnnouncements', async () => {
-                try {
-                    const state = await announcementService.forceRefresh();
-                    vscode.window.showInformationMessage(
-                        t('announcement.refreshed').replace('{count}', String(state.announcements.length)),
-                    );
-                    // 更新 HUD 中的公告状态
-                    this.hud.sendMessage({
-                        type: 'announcementState',
-                        data: state,
-                    });
-                } catch (error) {
-                    const err = error instanceof Error ? error : new Error(String(error));
-                    vscode.window.showErrorMessage(`Failed to refresh announcements: ${err.message}`);
-                }
-            }),
-        );
-
     }
 }

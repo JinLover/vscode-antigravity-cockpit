@@ -39,6 +39,7 @@ export interface QuotaHistoryResult {
     modelId: string | null;
     models: QuotaHistoryModelOption[];
     points: QuotaHistoryPoint[];
+    accounts?: string[];
 }
 
 const HISTORY_DAYS_LIMIT = 30;
@@ -417,6 +418,7 @@ export async function getQuotaHistory(
             modelId: null,
             models: [],
             points: [],
+            accounts: [normalizedEmail],
         };
     }
 
@@ -441,5 +443,6 @@ export async function getQuotaHistory(
         modelId: selectedModelId,
         models,
         points,
+        accounts: [normalizedEmail],
     };
 }

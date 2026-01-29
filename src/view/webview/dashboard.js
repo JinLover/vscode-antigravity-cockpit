@@ -115,9 +115,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 startCooldown(state.refreshCooldown - diff);
             }
         }
-        if (state.quotaSource) {
-            currentQuotaSource = state.quotaSource;
-        }
+        currentQuotaSource = 'local';
 
         // isProfileHidden and isDataMasked are now loaded from config in handleMessage
 
@@ -152,15 +150,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         if (settingsBtn) {
             settingsBtn.addEventListener('click', openSettingsModal);
         }
-
-        // 配额来源切换
-        const quotaSourceButtons = document.querySelectorAll('.quota-source-btn');
-        quotaSourceButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const source = btn.dataset.source;
-                requestQuotaSourceChange(source);
-            });
-        });
 
         // 关闭设置模态框
         const closeSettingsBtn = document.getElementById('close-settings-btn');
@@ -230,25 +219,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
 
 
 
-        // Announcement Events
-        const announcementBtn = document.getElementById('announcement-btn');
-        if (announcementBtn) announcementBtn.addEventListener('click', openAnnouncementList);
-
-        const announcementListClose = document.getElementById('announcement-list-close');
-        if (announcementListClose) announcementListClose.addEventListener('click', closeAnnouncementList);
-
-        const announcementMarkAllRead = document.getElementById('announcement-mark-all-read');
-        if (announcementMarkAllRead) announcementMarkAllRead.addEventListener('click', markAllAnnouncementsRead);
-
-        const announcementPopupLater = document.getElementById('announcement-popup-later');
-        if (announcementPopupLater) announcementPopupLater.addEventListener('click', closeAnnouncementPopup);
-
-        const announcementPopupGotIt = document.getElementById('announcement-popup-got-it');
-        if (announcementPopupGotIt) announcementPopupGotIt.addEventListener('click', handleAnnouncementGotIt);
-
-        const announcementPopupAction = document.getElementById('announcement-popup-action');
-        if (announcementPopupAction) announcementPopupAction.addEventListener('click', handleAnnouncementAction);
-
         // 事件委托：处理置顶开关
         dashboard.addEventListener('change', (e) => {
             if (e.target.classList.contains('pin-toggle')) {
@@ -297,7 +267,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 });
 
                 // 通知扩展 Tab 切换（可用于状态同步）
-                vscode.postMessage({ command: 'tabChanged', tab: targetTab });
                 if (targetTab === 'history') {
                     activateHistoryTab();
                 }
@@ -373,7 +342,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             historyClearThisBtn.addEventListener('click', () => {
                 if (historyState.selectedEmail) {
                     vscode.postMessage({
-                        command: 'clearHistorySingle',
+                        command: 'quotaHistory.clear',
                         email: historyState.selectedEmail,
                     });
                     closeHistoryClearModal();
@@ -384,7 +353,7 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         if (historyClearAllBtn) {
             historyClearAllBtn.addEventListener('click', () => {
                 vscode.postMessage({
-                    command: 'clearHistoryAll',
+                    command: 'quotaHistory.clearAll',
                 });
                 closeHistoryClearModal();
             });
@@ -1507,13 +1476,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         // 处理 Cockpit Tools 数据同步消息
         if (message.type === 'refreshAccounts') {
             // Cockpit Tools 数据变更，刷新授权状态和账号列表
-            vscode.postMessage({ command: 'getAutoTriggerState' });
             showToast(i18n['cockpitTools.dataChanged'] || '账号数据已更新', 'info');
         }
         
         if (message.type === 'accountSwitched') {
             // 账号切换完成
-            vscode.postMessage({ command: 'getAutoTriggerState' });
             showToast((i18n['cockpitTools.accountSwitched'] || '已切换至 {email}').replace('{email}', message.email || ''), 'success');
         }
     }
@@ -2698,18 +2665,9 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
         card.innerHTML = `
             <div class="icon offline-spinner"><span class="spinner"></span></div>
             <h2>${i18n['quotaSource.localLoadingTitle'] || 'Detecting local Antigravity...'}</h2>
-            <p>${i18n['quotaSource.localLoadingDesc'] || 'Keep the Antigravity client running. You can switch to authorized monitoring anytime.'}</p>
-            <div class="offline-actions">
-                <button class="btn-secondary" data-action="switch-authorized">
-                    ${i18n['quotaSource.switchToAuthorized'] || 'Switch to Authorized'}
-                </button>
-            </div>
+            <p>${i18n['quotaSource.localLoadingDesc'] || 'Keep the Antigravity client running.'}</p>
         `;
         dashboard.appendChild(card);
-        const switchBtn = card.querySelector('[data-action="switch-authorized"]');
-        switchBtn?.addEventListener('click', () => {
-            requestQuotaSourceChange('authorized', { force: true });
-        });
     }
 
     function renderAuthorizedLoadingCard() {
@@ -2900,7 +2858,6 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
             }
         });
 
-        vscode.postMessage({ command: 'tabChanged', tab: tabId });
         if (tabId === 'history') {
             activateHistoryTab();
         }
@@ -3159,18 +3116,11 @@ import { AUTH_RECOMMENDED_LABELS, AUTH_RECOMMENDED_MODEL_IDS } from '../../share
                 <button class="btn-secondary" data-action="retry-local">
                     ${i18n['quotaSource.retryLocal'] || (i18n['help.retry'] || 'Retry')}
                 </button>
-                <button class="btn-primary" data-action="switch-authorized">
-                    ${i18n['quotaSource.switchToAuthorized'] || 'Switch to Authorized'}
-                </button>
             </div>
         `;
         dashboard.appendChild(card);
         const retryBtn = card.querySelector('[data-action="retry-local"]');
-        const switchBtn = card.querySelector('[data-action="switch-authorized"]');
         retryBtn?.addEventListener('click', retryConnection);
-        switchBtn?.addEventListener('click', () => {
-            requestQuotaSourceChange('authorized', { force: true });
-        });
     }
 
     function renderAuthorizedOfflineCard(errorMessage) {

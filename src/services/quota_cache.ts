@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { createHash } from 'crypto';
 
-export type QuotaCacheSource = 'authorized' | 'local';
+export type QuotaCacheSource = 'local';
 
 export interface QuotaCacheModel {
     id: string;

@@ -13,9 +13,6 @@ export const QUOTA_THRESHOLDS = {
     CRITICAL_DEFAULT: 10,
 } as const;
 
-/** 反馈链接 */
-export const FEEDBACK_URL = 'https://github.com/jlcodes99/vscode-antigravity-cockpit/issues';
-
 /** 时间相关常量 (毫秒) */
 export const TIMING = {
     /** 默认刷新间隔 */
@@ -73,7 +70,6 @@ export const CONFIG_KEYS = {
     GROUP_MAPPINGS: 'groupMappings',
     WARNING_THRESHOLD: 'warningThreshold',
     CRITICAL_THRESHOLD: 'criticalThreshold',
-    QUOTA_SOURCE: 'quotaSource',
     DISPLAY_MODE: 'displayMode',
     PROFILE_HIDDEN: 'profileHidden',
     DATA_MASKED: 'dataMasked',

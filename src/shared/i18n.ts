@@ -1,48 +1,20 @@
 /**
  * Antigravity Cockpit - 国际化支持
- * i18n implementation supporting 15 languages
+ * i18n implementation supporting English and Korean
  */
 
 import * as vscode from 'vscode';
-import { en, zhCN, ja, es, de, fr, ptBR, ru, ko, it, zhTW, tr, pl, cs, ar, vi } from './translations';
+import { en, ko } from './translations';
 
 /** 支持的语言 */
 export type SupportedLocale = 
-    | 'en' 
-    | 'zh-cn' 
-    | 'ja' 
-    | 'es' 
-    | 'de' 
-    | 'fr' 
-    | 'pt-br' 
-    | 'ru' 
-    | 'ko' 
-    | 'it' 
-    | 'zh-tw' 
-    | 'tr' 
-    | 'pl' 
-    | 'cs'
-    | 'ar'
-    | 'vi';
+    | 'en'
+    | 'ko';
 
 /** 语言显示名称映射 */
 export const localeDisplayNames: Record<SupportedLocale, string> = {
     'en': 'English',
-    'zh-cn': '简体中文',
-    'zh-tw': '繁體中文',
-    'ja': '日本語',
     'ko': '한국어',
-    'de': 'Deutsch',
-    'fr': 'Français',
-    'es': 'Español',
-    'pt-br': 'Português (Brasil)',
-    'ru': 'Русский',
-    'it': 'Italiano',
-    'tr': 'Türkçe',
-    'pl': 'Polski',
-    'cs': 'Čeština',
-    'ar': 'اللغة العربية',
-    'vi': 'Tiếng Việt',
 };
 
 /** 翻译键值对 */
@@ -53,21 +25,7 @@ interface TranslationMap {
 /** 翻译资源 */
 const translations: Record<SupportedLocale, TranslationMap> = {
     'en': en,
-    'zh-cn': zhCN,
-    'ja': ja,
-    'es': es,
-    'de': de,
-    'fr': fr,
-    'pt-br': ptBR,
-    'ru': ru,
     'ko': ko,
-    'it': it,
-    'zh-tw': zhTW,
-    'tr': tr,
-    'pl': pl,
-    'cs': cs,
-    'ar': ar,
-    'vi': vi,
 };
 
 /** 语言代码映射 - 将 VSCode 语言代码映射到我们支持的语言 */
@@ -75,25 +33,8 @@ const localeMapping: Record<string, SupportedLocale> = {
     'en': 'en',
     'en-us': 'en',
     'en-gb': 'en',
-    'zh-cn': 'zh-cn',
-    'zh-hans': 'zh-cn',
-    'zh-tw': 'zh-tw',
-    'zh-hant': 'zh-tw',
-    'ja': 'ja',
-    'es': 'es',
-    'de': 'de',
-    'fr': 'fr',
-    'pt-br': 'pt-br',
-    'pt': 'pt-br',
-    'ru': 'ru',
     'ko': 'ko',
-    'it': 'it',
-    'tr': 'tr',
-    'pl': 'pl',
-    'cs': 'cs',
-    'ar': 'ar',
-    'vi': 'vi',
-    'vi-vn': 'vi',
+    'ko-kr': 'ko',
 };
 
 /**

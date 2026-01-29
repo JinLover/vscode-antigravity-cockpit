@@ -321,74 +321,20 @@ export type WebviewMessageType =
     | 'promptRenameGroup'
     | 'toggleGroupPin'
     | 'updateGroupOrder'
-    | 'autoGroup'
     | 'updateNotificationEnabled'
     | 'updateThresholds'
     | 'renameModel'
     | 'updateStatusBarFormat'
     | 'toggleProfile'
-    | 'updateQuotaSource'
-    | 'quotaSourceGuideComplete'
-    | 'quotaSourceGuideDismiss'
     | 'updateDisplayMode'
     | 'updateDataMasked'
     | 'updateLanguage'
-    | 'openCustomGrouping'
     | 'saveCustomGrouping'
-    | 'previewAutoGroup'
-    // Auto Trigger
-    | 'tabChanged'
-    | 'autoTrigger.authorize'
-    | 'autoTrigger.revoke'
-    | 'autoTrigger.addAccount'
-    | 'autoTrigger.removeAccount'
-    | 'autoTrigger.switchAccount'
-    | 'autoTrigger.switchLoginAccount'
-    | 'autoTrigger.reauthorizeAccount'
-    | 'autoTrigger.importLocal'
-    | 'autoTrigger.importLocalConfirm'
-    | 'autoTrigger.saveSchedule'
-    | 'autoTrigger.test'
-    | 'autoTrigger.validateCrontab'
-    | 'autoTrigger.getState'
-    | 'getAutoTriggerState'
-    | 'autoTrigger.clearHistory'
-    // Feature Guide
-    | 'guide.checkItOut'
-    | 'guide.dontShowAgain'
-    // Announcements
-    | 'announcement.getState'
-    | 'announcement.markAsRead'
-    | 'announcement.markAllAsRead'
     // Quota History
     | 'quotaHistory.get'
-    // Antigravity Tools Sync
-    | 'antigravityToolsSync.import'
-    | 'antigravityToolsSync.importAuto'
-    | 'antigravityToolsSync.importConfirm'
-    | 'antigravityToolsSync.importJson'
-    | 'antigravityToolsSync.cancel'
-    | 'antigravityToolsSync.toggle'
-    | 'antigravityToolsSync.toggleAutoSwitch'
-    | 'antigravityToolsSync.switchToClient'
-    // General
-    | 'openUrl'
-    | 'executeCommand'
     | 'updateVisibleModels'
-    | 'clearHistorySingle'
-    | 'clearHistoryAll'
-    | 'refreshAll'
-    | 'refreshAccount'
-    | 'switchAccount'
-    | 'deleteAccount'
-    | 'deleteAccounts'
-    | 'addAccount'
-    | 'importTokens'
-    | 'importFromExtension'
-    | 'importFromLocal'
-    | 'importFromTools'
-    | 'exportAccounts'
-    | 'openDashboard';
+    | 'quotaHistory.clear'
+    | 'quotaHistory.clearAll';
 
 /** Webview 消息 */
 export interface WebviewMessage {
@@ -411,14 +357,10 @@ export interface WebviewMessage {
     criticalThreshold?: number;
     /** 状态栏显示格式 (updateStatusBarFormat) */
     statusBarFormat?: string;
-    /** 配额来源 (updateQuotaSource) */
-    quotaSource?: 'local' | 'authorized';
     /** 显示模式 (updateDisplayMode) */
     displayMode?: 'webview' | 'quickpick';
     /** 数据遮罩状态 (updateDataMasked) */
     dataMasked?: boolean;
-    /** Antigravity Tools 同步开关 */
-    enabled?: boolean;
     /** 语言设置 (updateLanguage) */
     language?: string;
     /** 自定义分组映射 (saveCustomGrouping) */
@@ -427,75 +369,10 @@ export interface WebviewMessage {
     customGroupNames?: Record<string, string>;
     /** 可见模型列表 */
     visibleModels?: string[];
-    /** Antigravity Tools JSON 导入 */
-    jsonText?: string;
-    // Auto Trigger
-    /** Tab 名称 (tabChanged) */
-    tab?: string;
-    /** 调度配置 (autoTrigger.saveSchedule) */
-    schedule?: ScheduleConfig;
-    /** Crontab 表达式 (autoTrigger.validateCrontab) */
-    crontab?: string;
-    /** 手动测试模型列表 (autoTrigger.test) */
-    models?: string[];
-    /** 最大输出 token (autoTrigger.test) */
-    maxOutputTokens?: number;
-    /** 账号邮箱 (autoTrigger.removeAccount, autoTrigger.switchAccount) */
-    email?: string;
     /** 历史范围天数 (quotaHistory.get) */
     rangeDays?: number;
-    // Announcements
-    /** 公告 ID (announcement.markAsRead) */
-    id?: string;
-    /** URL (openUrl) */
-    url?: string;
-    /** 命令 ID (executeCommand) */
-    commandId?: string;
-    /** 命令参数 (executeCommand) */
-    commandArgs?: unknown[];
-    /** 仅导入不切换 (antigravityToolsSync.importConfirm) */
-    importOnly?: boolean;
-    /** 仅切换不导入 (antigravityToolsSync.importConfirm) */
-    switchOnly?: boolean;
-    /** 目标切换邮箱 (antigravityToolsSync.importConfirm) */
-    targetEmail?: string;
-    /** 是否覆盖已有账号 (autoTrigger.importLocalConfirm) */
-    overwrite?: boolean;
-    /** 导入内容 (importTokens) */
-    content?: string;
-    /**邮箱列表 (deleteAccounts, exportAccounts) */
-    emails?: string[];
-    /** 模式 (addAccount) */
-    mode?: string;
-}
-
-/** 调度配置 */
-export interface ScheduleConfig {
-    enabled: boolean;
-    repeatMode: 'daily' | 'weekly' | 'interval';
-    dailyTimes?: string[];
-    weeklyDays?: number[];
-    weeklyTimes?: string[];
-    intervalHours?: number;
-    intervalStartTime?: string;
-    intervalEndTime?: string;
-    crontab?: string;
-    selectedModels: string[];
-    maxOutputTokens?: number;
-}
-
-/** Dashboard 授权状态 */
-export interface DashboardAuthorizationStatus {
-    isAuthorized: boolean;
+    /** 邮箱 (quotaHistory.clear) */
     email?: string;
-    expiresAt?: string;
-    accounts?: Array<{
-        email: string;
-        isActive: boolean;
-        expiresAt?: string;
-        isInvalid?: boolean;
-    }>;
-    activeAccount?: string;
 }
 
 /** Dashboard 配置 */
@@ -534,12 +411,6 @@ export interface DashboardConfig {
     statusBarFormat?: string;
     /** 是否隐藏计划详情面板 */
     profileHidden?: boolean;
-    /** 配额来源 (local | authorized) */
-    quotaSource?: string;
-    /** 是否已完成授权 */
-    authorizedAvailable?: boolean;
-    /** 授权状态详情 */
-    authorizationStatus?: DashboardAuthorizationStatus;
     /** 显示模式 (webview | quickpick) */
     displayMode?: string;
     /** 是否遮罩敏感数据 */
@@ -550,10 +421,6 @@ export interface DashboardConfig {
     groupMappings?: Record<string, string>;
     /** 语言设置（'auto' 跟随 VS Code，或具体语言代码） */
     language?: string;
-    /** 是否开启 AntigravityTools 同步（来自 globalState） */
-    antigravityToolsSyncEnabled?: boolean;
-    /** 是否开启 AntigravityTools 自动切换（来自 globalState） */
-    antigravityToolsAutoSwitchEnabled?: boolean;
 }
 
 /** 状态栏更新数据 */
