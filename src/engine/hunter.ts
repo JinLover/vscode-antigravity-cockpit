@@ -245,7 +245,7 @@ export class ProcessHunter {
                     csrfToken: info.csrfToken,
                 };
             }
-            logger.warn(`⚠️ No listening ports found; continuing with unverified connection`);
+            logger.warn('⚠️ No listening ports found; continuing with unverified connection');
             return {
                 extensionPort: info.extensionPort,
                 connectPort: preferredPort,
@@ -371,7 +371,9 @@ export class ProcessHunter {
 
         const paths = [API_ENDPOINTS.GET_USER_STATUS, API_ENDPOINTS.GET_USER_STATUS_SEAT];
         return attempt(paths[0]).then(ok => {
-            if (ok) return true;
+            if (ok) {
+                return true;
+            }
             return attempt(paths[1]);
         });
     }
