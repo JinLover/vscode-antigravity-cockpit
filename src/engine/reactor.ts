@@ -268,11 +268,90 @@ export class ReactorCore {
 
         this.initRetryToken += 1;
         const retryToken = this.initRetryToken;
-        this.initWithRetry(3, 0, retryToken);
+        this.initAfterReady(retryToken);
 
         this.pulseTimer = setInterval(() => {
             this.syncTelemetry();
         }, interval);
+    }
+
+    private async initAfterReady(retryToken: number): Promise<void> {
+        const ready = await this.waitForServerReady(retryToken);
+        if (!ready || retryToken !== this.initRetryToken) {
+            return;
+        }
+        this.initWithRetry(3, 0, retryToken);
+    }
+
+    private async waitForServerReady(retryToken: number): Promise<boolean> {
+        const maxWaitMs = 10000;
+        const pollIntervalMs = 500;
+        const start = Date.now();
+        while (Date.now() - start < maxWaitMs) {
+            if (retryToken !== this.initRetryToken) {
+                return false;
+            }
+            const ok = await this.probeReady();
+            if (ok) {
+                return true;
+            }
+            await this.delay(pollIntervalMs);
+        }
+        logger.warn('[ReactorCore] Server not ready after wait; continuing with init');
+        return true;
+    }
+
+    private async probeReady(): Promise<boolean> {
+        const payload = JSON.stringify({
+            metadata: {
+                ideName: 'antigravity',
+                extensionName: 'antigravity',
+                locale: 'en',
+            },
+        });
+
+        const probe = (path: string): Promise<boolean> => new Promise(resolve => {
+            const opts: https.RequestOptions = {
+                hostname: '127.0.0.1',
+                port: this.port,
+                path,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                    'Connect-Protocol-Version': '1',
+                    'X-Codeium-Csrf-Token': this.token,
+                },
+                rejectUnauthorized: false,
+                timeout: 2000,
+                agent: false,
+            };
+
+            const req = https.request(opts, res => {
+                let body = '';
+                res.on('data', c => (body += c));
+                res.on('end', () => {
+                    if (res.statusCode === 404 || /404 page not found/i.test(body)) {
+                        resolve(false);
+                        return;
+                    }
+                    const ok = res.statusCode === 200 || res.statusCode === 400 || res.statusCode === 401 || res.statusCode === 403;
+                    resolve(ok);
+                });
+            });
+            req.on('error', () => resolve(false));
+            req.on('timeout', () => {
+                req.destroy();
+                resolve(false);
+            });
+            req.write(payload);
+            req.end();
+        });
+
+        if (await probe(API_ENDPOINTS.GET_USER_STATUS)) {
+            return true;
+        }
+        return probe(API_ENDPOINTS.GET_USER_STATUS_SEAT);
     }
 
     /**
